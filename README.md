@@ -7,6 +7,10 @@
   ![MongoDB](https://img.shields.io/badge/Database-MongoDB-brightgreen?style=flat-square)
   ![Groq](https://img.shields.io/badge/AI-Groq%20Llama%203.3-orange?style=flat-square)
   ![Redis](https://img.shields.io/badge/Cache-Redis-red?style=flat-square)
+
+  <br />
+
+  🔗 **[Live Demo](https://codereviewai.vercel.app)** — coming soon
 </div>
 
 ---
@@ -82,6 +86,20 @@ CodeReviewAI is a full-stack web application that gives developers instant, deta
 4. Worker calls Groq API with a structured prompt — response is parsed into JSON
 5. Result is saved to MongoDB, cached in Redis, and returned to the frontend
 6. User sees scores, issues, refactoring suggestions, and can export a PDF report
+
+## Key Design Decisions
+
+**Why a Job Queue?**
+If 100 users submit code simultaneously, direct API calls would overwhelm the system. The queue processes jobs with a configurable worker limit, ensuring stability under load.
+
+**Why Redis Caching?**
+Identical code submissions return cached results instantly without hitting the AI API. Cache TTL is 1 hour, reducing latency and API costs significantly.
+
+**Why Rate Limiting?**
+Each user is limited to 10 requests per minute to prevent abuse and ensure fair usage across all users.
+
+**Why GitHub OAuth?**
+Code review is a developer tool — GitHub OAuth gives frictionless login for the exact target audience with no password management needed.
 
 ## Local Development
 
@@ -177,4 +195,6 @@ CodeReviewAI/
     └── index.js
 ```
 
-#
+## Author
+
+**Maheswari** — [@maheswari8074](https://github.com/maheswari8074)

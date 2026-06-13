@@ -19,7 +19,7 @@ export default function Home() {
   }, []);
 
   const handleLogin = () => {
-    window.location.href = "http://localhost:5000/api/auth/github";
+    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/github`;
   };
 
   return (

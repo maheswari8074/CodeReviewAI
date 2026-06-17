@@ -57,7 +57,7 @@ export default function HistoryPage() {
         zIndex: 100
       }}>
         <div
-          onClick={() => router.push("/dashboard")}
+          onClick={() => router.push("/")}
           style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}
         >
           <div style={{

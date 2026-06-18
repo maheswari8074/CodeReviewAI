@@ -58,4 +58,18 @@ ${code}
   return parsed;
 };
 
-module.exports = { reviewCode };
+const chatCompletion = async (messages, systemPrompt) => {
+  const response = await groq.chat.completions.create({
+    model: "llama-3.3-70b-versatile",
+    messages: [
+      { role: "system", content: systemPrompt },
+      ...messages,
+    ],
+    temperature: 0.5,
+    max_tokens: 2000,
+  });
+
+  return response.choices[0].message.content;
+};
+
+module.exports = { reviewCode, chatCompletion };

@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
+import DashboardCharts from "../components/DashboardCharts";
 
 export default function Dashboard() {
   const { user, loading, logout } = useAuth();
@@ -131,7 +132,7 @@ export default function Dashboard() {
 
       {/* Main Content */}
       <div
-        style={{ maxWidth: "1000px", margin: "0 auto", padding: "60px 48px" }}
+        style={{ maxWidth: "1100px", margin: "0 auto", padding: "60px 48px" }}
       >
         {/* Welcome */}
         <div style={{ marginBottom: "48px" }}>
@@ -247,50 +248,115 @@ export default function Dashboard() {
               reviews.
             </p>
           </div>
+
+          <div
+            onClick={() => router.push("/repo-review")}
+            style={{
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              borderRadius: "12px",
+              padding: "32px",
+              cursor: "pointer",
+              transition: "border-color 0.2s",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.borderColor = "var(--accent)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.borderColor = "var(--border)")
+            }
+          >
+            <div style={{ fontSize: "32px", marginBottom: "16px" }}>⬡</div>
+            <h3
+              style={{
+                fontFamily: "Space Grotesk",
+                fontSize: "20px",
+                fontWeight: "600",
+                marginBottom: "8px",
+              }}
+            >
+              Repo Review
+            </h3>
+            <p
+              style={{
+                color: "var(--text-secondary)",
+                fontSize: "14px",
+                lineHeight: "1.6",
+              }}
+            >
+              Paste a GitHub repo URL and get an aggregated AI review of key
+              files across the project.
+            </p>
+          </div>
+
+          <div
+            onClick={() => router.push("/chat")}
+            style={{
+              background: "var(--bg-secondary)",
+              border: "1px solid var(--border)",
+              borderRadius: "12px",
+              padding: "32px",
+              cursor: "pointer",
+              transition: "border-color 0.2s",
+            }}
+            onMouseEnter={(e) =>
+              (e.currentTarget.style.borderColor = "var(--accent)")
+            }
+            onMouseLeave={(e) =>
+              (e.currentTarget.style.borderColor = "var(--border)")
+            }
+          >
+            <div style={{ fontSize: "32px", marginBottom: "16px" }}>💬</div>
+            <h3
+              style={{
+                fontFamily: "Space Grotesk",
+                fontSize: "20px",
+                fontWeight: "600",
+                marginBottom: "8px",
+              }}
+            >
+              AI Chat
+            </h3>
+            <p
+              style={{
+                color: "var(--text-secondary)",
+                fontSize: "14px",
+                lineHeight: "1.6",
+              }}
+            >
+              Ask coding questions, get explanations, and discuss best practices
+              with your AI assistant.
+            </p>
+          </div>
         </div>
 
-        {/* Stats Row */}
-        <div
-          style={{
-            background: "var(--bg-secondary)",
-            border: "1px solid var(--border)",
-            borderRadius: "12px",
-            padding: "28px",
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "20px",
-          }}
-        >
-          {[
-            { label: "Languages Supported", value: "5+" },
-            { label: "Powered By", value: "Llama 3.3" },
-            { label: "Avg Review Time", value: "~3s" },
-          ].map((stat) => (
-            <div key={stat.label} style={{ textAlign: "center" }}>
-              <div
-                style={{
-                  fontFamily: "Space Grotesk",
-                  fontSize: "28px",
-                  fontWeight: "700",
-                  color: "var(--accent)",
-                  marginBottom: "4px",
-                }}
-              >
-                {stat.value}
-              </div>
-              <div
-                style={{
-                  fontFamily: "JetBrains Mono",
-                  fontSize: "11px",
-                  color: "var(--text-secondary)",
-                  textTransform: "uppercase",
-                  letterSpacing: "1px",
-                }}
-              >
-                {stat.label}
-              </div>
-            </div>
-          ))}
+        {/* Analytics */}
+        <div style={{ marginBottom: "48px" }}>
+          <div style={{ marginBottom: "24px" }}>
+            <p
+              style={{
+                fontFamily: "JetBrains Mono",
+                fontSize: "12px",
+                color: "var(--accent)",
+                marginBottom: "8px",
+                textTransform: "uppercase",
+                letterSpacing: "1px",
+              }}
+            >
+              Analytics
+            </p>
+            <h2
+              style={{
+                fontFamily: "Space Grotesk",
+                fontSize: "24px",
+                fontWeight: "700",
+                letterSpacing: "-0.5px",
+              }}
+            >
+              Your Review Insights
+            </h2>
+          </div>
+          <DashboardCharts />
         </div>
       </div>
     </main>

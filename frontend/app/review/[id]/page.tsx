@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "../../hooks/useAuth";
+import { useJobPolling } from "../../hooks/useJobPolling";
+import ChatPanel from "../../components/ChatPanel";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 const SEVERITY_COLORS: Record<string, string> = {
@@ -18,6 +20,31 @@ export default function ReviewDetailPage() {
   const [fetching, setFetching] = useState(true);
   const [activeTab, setActiveTab] = useState("issues");
 
+  const { startPolling } = useJobPolling({
+    statusUrl: (id) =>
+      `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/${id}/status`,
+    onComplete: async () => {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/${params.id}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await res.json();
+      if (res.ok) setReview(data);
+      setFetching(false);
+    },
+    onFailed: async () => {
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/${params.id}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const data = await res.json();
+      if (res.ok) setReview(data);
+      setFetching(false);
+    },
+  });
+
   useEffect(() => {
     if (!loading && !user) router.push("/");
   }, [user, loading]);
@@ -31,16 +58,22 @@ export default function ReviewDetailPage() {
           },
         );
         const data = await res.json();
-        if (res.ok) setReview(data);
-        else router.push("/history");
+        if (res.ok) {
+          if (data.status === "processing") {
+            startPolling(params.id as string);
+          } else {
+            setReview(data);
+            setFetching(false);
+          }
+        } else {
+          router.push("/history");
+        }
       } catch (err) {
         router.push("/history");
-      } finally {
-        setFetching(false);
       }
     };
     if (user) fetchReview();
-  }, [user]);
+  }, [user, params.id]);
 
   const ScoreBar = ({ label, value }: { label: string; value: number }) => (
     <div style={{ marginBottom: "16px" }}>
@@ -101,8 +134,10 @@ export default function ReviewDetailPage() {
           minHeight: "100vh",
           background: "var(--bg-primary)",
           display: "flex",
+          flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
+          gap: "16px",
         }}
       >
         <div
@@ -115,6 +150,15 @@ export default function ReviewDetailPage() {
             animation: "spin 0.8s linear infinite",
           }}
         />
+        <p
+          style={{
+            fontFamily: "Space Grotesk",
+            fontSize: "15px",
+            color: "var(--text-secondary)",
+          }}
+        >
+          Analyzing code...
+        </p>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </div>
     );
@@ -809,6 +853,11 @@ export default function ReviewDetailPage() {
           to { opacity: 1; transform: translateY(0); }
         }
       `}</style>
+
+      <ChatPanel
+        reviewId={params.id as string}
+        title="Ask about this review"
+      />
     </main>
   );
 }

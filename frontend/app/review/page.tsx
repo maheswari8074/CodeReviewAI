@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
+import { useJobPolling } from "../hooks/useJobPolling";
 import Editor from "@monaco-editor/react";
 const LANGUAGES = [
   "auto",
@@ -30,6 +31,27 @@ export default function ReviewPage() {
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("issues");
   const [filename, setFilename] = useState("");
+
+  const { polling, error: pollError, startPolling } = useJobPolling({
+    statusUrl: (id) =>
+      `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/${id}/status`,
+    onComplete: async (data) => {
+      const reviewId = data.reviewId as string;
+      const token = localStorage.getItem("token");
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/${reviewId}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      const review = await res.json();
+      if (res.ok) {
+        setResult(review.result);
+        setActiveTab("issues");
+      }
+      setReviewing(false);
+    },
+    onFailed: () => setReviewing(false),
+  });
+
   useEffect(() => {
     if (!loading && !user) router.push("/");
   }, [user, loading]);
@@ -59,14 +81,19 @@ export default function ReviewPage() {
 
       const data = await res.json();
       if (res.ok) {
-        setResult(data.result);
-        setActiveTab("issues");
+        if (data.result) {
+          setResult(data.result);
+          setActiveTab("issues");
+          setReviewing(false);
+        } else if (data.status === "processing" && data.reviewId) {
+          startPolling(data.reviewId);
+        }
       } else {
         setError(data.message || "Review failed.");
+        setReviewing(false);
       }
     } catch (err) {
       setError("Something went wrong. Please try again.");
-    } finally {
       setReviewing(false);
     }
   };
@@ -177,6 +204,21 @@ export default function ReviewPage() {
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <button
+            onClick={() => router.push("/repo-review")}
+            style={{
+              background: "transparent",
+              color: "var(--text-secondary)",
+              border: "1px solid var(--border)",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              fontFamily: "Space Grotesk",
+              fontSize: "13px",
+              cursor: "pointer",
+            }}
+          >
+            Repo Review
+          </button>
           <button
             onClick={() => router.push("/history")}
             style={{
@@ -374,7 +416,7 @@ export default function ReviewPage() {
               />
             </div>
 
-            {error && (
+            {(error || pollError) && (
               <p
                 style={{
                   color: "var(--critical)",
@@ -383,29 +425,29 @@ export default function ReviewPage() {
                   marginTop: "8px",
                 }}
               >
-                ⚠ {error}
+                ⚠ {error || pollError}
               </p>
             )}
 
             <button
               onClick={handleReview}
-              disabled={reviewing}
+              disabled={reviewing || polling}
               style={{
                 width: "100%",
                 marginTop: "16px",
-                background: reviewing ? "var(--bg-tertiary)" : "var(--accent)",
-                color: reviewing ? "var(--text-secondary)" : "#0F0F0F",
+                background: reviewing || polling ? "var(--bg-tertiary)" : "var(--accent)",
+                color: reviewing || polling ? "var(--text-secondary)" : "#0F0F0F",
                 border: "none",
                 padding: "16px",
                 borderRadius: "10px",
                 fontFamily: "Space Grotesk",
                 fontWeight: "700",
                 fontSize: "15px",
-                cursor: reviewing ? "not-allowed" : "pointer",
+                cursor: reviewing || polling ? "not-allowed" : "pointer",
                 transition: "all 0.2s",
               }}
             >
-              {reviewing ? "Analyzing code..." : "Review Code →"}
+              {reviewing || polling ? "Analyzing code..." : "Review Code →"}
             </button>
           </div>
 

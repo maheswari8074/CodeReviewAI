@@ -2,12 +2,28 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../hooks/useAuth";
+import Pagination from "../components/Pagination";
+
+const PAGE_SIZE = 10;
 
 export default function HistoryPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [reviews, setReviews] = useState<any[]>([]);
   const [fetching, setFetching] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    totalPages: 1,
+    total: 0,
+    hasNext: false,
+    hasPrev: false,
+  });
+  const [summary, setSummary] = useState({
+    totalReviews: 0,
+    avgScore: null as number | null,
+    latestScore: null as number | null,
+  });
 
   useEffect(() => {
     if (!loading && !user) router.push("/");
@@ -15,13 +31,19 @@ export default function HistoryPage() {
 
   useEffect(() => {
     const fetchReviews = async () => {
+      setFetching(true);
       try {
         const token = localStorage.getItem("token");
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reviews`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/reviews?page=${page}&limit=${PAGE_SIZE}`,
+          { headers: { Authorization: `Bearer ${token}` } },
+        );
         const data = await res.json();
-        if (res.ok) setReviews(data);
+        if (res.ok) {
+          setReviews(data.data || []);
+          setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
+          if (data.summary) setSummary(data.summary);
+        }
       } catch (err) {
         console.error(err);
       } finally {
@@ -29,7 +51,7 @@ export default function HistoryPage() {
       }
     };
     if (user) fetchReviews();
-  }, [user]);
+  }, [user, page]);
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return "var(--success)";
@@ -73,6 +95,18 @@ export default function HistoryPage() {
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <button onClick={() => router.push("/repo-review")} style={{
+            background: "transparent",
+            color: "var(--text-secondary)",
+            border: "1px solid var(--border)",
+            padding: "8px 16px",
+            borderRadius: "8px",
+            fontFamily: "Space Grotesk",
+            fontSize: "13px",
+            cursor: "pointer"
+          }}>
+            Repo Review
+          </button>
           <button onClick={() => router.push("/review")} style={{
             background: "var(--accent)",
             color: "#0F0F0F",
@@ -164,14 +198,14 @@ export default function HistoryPage() {
               marginBottom: "32px"
             }}>
               {[
-                { label: "Total Reviews", value: reviews.length },
+                { label: "Total Reviews", value: summary.totalReviews || pagination.total },
                 {
                   label: "Avg Score",
-                  value: Math.round(reviews.filter(r => r.result?.overallScore).reduce((acc, r) => acc + r.result.overallScore, 0) / reviews.filter(r => r.result?.overallScore).length) || "—"
+                  value: summary.avgScore ?? "—",
                 },
                 {
                   label: "Latest Score",
-                  value: reviews[0]?.result?.overallScore || "—"
+                  value: summary.latestScore ?? "—",
                 },
               ].map((stat) => (
                 <div key={stat.label} style={{
@@ -266,6 +300,13 @@ export default function HistoryPage() {
                 </div>
               </div>
             ))}
+
+            <Pagination
+              page={pagination.page}
+              totalPages={pagination.totalPages}
+              total={pagination.total}
+              onPageChange={setPage}
+            />
           </div>
         )}
       </div>

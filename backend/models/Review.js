@@ -6,6 +6,7 @@ const reviewSchema = new mongoose.Schema({
   language: { type: String, default: "auto" },
   filename: { type: String, default: "" },
   status: { type: String, enum: ["pending", "processing", "completed", "failed"], default: "pending" },
+  error: { type: String },
   result: {
     overallScore: { type: Number },
     readability: { type: Number },

@@ -20,6 +20,8 @@ connectDB();
 // Routes
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/reviews", require("./routes/review"));
+app.use("/api/repo-reviews", require("./routes/repo"));
+app.use("/api/chat", require("./routes/chat"));
 // Health check
 app.get("/", (req, res) => {
   res.json({ message: "CodeReviewAI backend is running 🚀" });

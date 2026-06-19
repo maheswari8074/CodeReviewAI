@@ -10,7 +10,7 @@ AI-powered code review tool for developers. Paste a snippet or submit a public G
 ![License](https://img.shields.io/badge/license-ISC-lightgrey?style=flat-square)
 
 > **Live demo:** https://code-review-ai-mocha.vercel.app
-> **GitHub:** https://github.com/maheswari8074/CodeReviewAI
+
 
 ---
 

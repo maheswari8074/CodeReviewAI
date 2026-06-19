@@ -1,5 +1,7 @@
 "use client";
 
+import styles from "./Pagination.module.css";
+
 type PaginationProps = {
   page: number;
   totalPages: number;
@@ -7,12 +9,7 @@ type PaginationProps = {
   onPageChange: (page: number) => void;
 };
 
-export default function Pagination({
-  page,
-  totalPages,
-  total,
-  onPageChange,
-}: PaginationProps) {
+export default function Pagination({ page, totalPages, total, onPageChange }: PaginationProps) {
   if (totalPages <= 1) return null;
 
   const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
@@ -23,62 +20,32 @@ export default function Pagination({
       return acc;
     }, []);
 
-  const buttonStyle = (active: boolean, disabled = false): React.CSSProperties => ({
-    background: active ? "var(--accent)" : "var(--bg-secondary)",
-    color: active ? "#0F0F0F" : disabled ? "var(--text-secondary)" : "var(--text-primary)",
-    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-    padding: "8px 14px",
-    borderRadius: "6px",
-    fontFamily: "Space Grotesk",
-    fontSize: "13px",
-    fontWeight: active ? "600" : "400",
-    cursor: disabled ? "not-allowed" : "pointer",
-    opacity: disabled ? 0.5 : 1,
-  });
-
   return (
-    <div
-      style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        marginTop: "24px",
-        flexWrap: "wrap",
-        gap: "12px",
-      }}
-    >
-      <span
-        style={{
-          fontFamily: "JetBrains Mono",
-          fontSize: "12px",
-          color: "var(--text-secondary)",
-        }}
-      >
+    <div className={styles.root}>
+      <span className={styles.info}>
         Page {page} of {totalPages} · {total} total
       </span>
 
-      <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+      <div className={styles.buttons}>
         <button
+          className={styles.btn}
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
-          style={buttonStyle(false, page <= 1)}
+          aria-label="Previous page"
         >
           ← Prev
         </button>
 
         {pages.map((p, i) =>
           p === "..." ? (
-            <span
-              key={`ellipsis-${i}`}
-              style={{ color: "var(--text-secondary)", padding: "0 4px" }}
-            >
-              …
-            </span>
+            <span key={`ellipsis-${i}`} className={styles.ellipsis}>…</span>
           ) : (
             <button
               key={p}
+              className={`${styles.btn} ${p === page ? styles.active : ""}`}
               onClick={() => onPageChange(p)}
-              style={buttonStyle(p === page)}
+              aria-label={`Page ${p}`}
+              aria-current={p === page ? "page" : undefined}
             >
               {p}
             </button>
@@ -86,9 +53,10 @@ export default function Pagination({
         )}
 
         <button
+          className={styles.btn}
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
-          style={buttonStyle(false, page >= totalPages)}
+          aria-label="Next page"
         >
           Next →
         </button>

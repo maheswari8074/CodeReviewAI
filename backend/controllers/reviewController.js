@@ -1,6 +1,6 @@
 const Review = require("../models/Review");
 const mongoose = require("mongoose");
-const { reviewCode } = require("../services/claudeService");
+const { reviewCode } = require("../services/groqService");
 const { getCachedReview, setCachedReview } = require("../services/cacheService");
 const reviewQueue = require("../queues/reviewQueue");
 
@@ -98,6 +98,16 @@ const getReviews = async (req, res) => {
     const skip = (page - 1) * limit;
 
     const filter = { userId: req.userId };
+    const query = typeof req.query.q === "string" ? req.query.q.trim().slice(0, 80) : "";
+    const allowedStatuses = ["pending", "processing", "completed", "failed"];
+    if (allowedStatuses.includes(req.query.status)) filter.status = req.query.status;
+    if (query) {
+      const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      filter.$or = [
+        { filename: { $regex: escapedQuery, $options: "i" } },
+        { language: { $regex: escapedQuery, $options: "i" } },
+      ];
+    }
 
     const [reviews, total, summary] = await Promise.all([
       Review.find(filter)
@@ -123,6 +133,19 @@ const getReviews = async (req, res) => {
       },
       summary,
     });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+const deleteReview = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid review ID" });
+    }
+    const review = await Review.findOneAndDelete({ _id: req.params.id, userId: req.userId });
+    if (!review) return res.status(404).json({ message: "Review not found" });
+    res.json({ message: "Review deleted" });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
@@ -173,4 +196,5 @@ module.exports = {
   getReview,
   getReviewStatus,
   getQueueStats,
+  deleteReview,
 };

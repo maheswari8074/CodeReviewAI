@@ -1,6 +1,7 @@
 const Review = require("../models/Review");
 const RepoReview = require("../models/RepoReview");
-const { reviewCode } = require("../services/claudeService");
+const mongoose = require("mongoose");
+const { reviewCode } = require("../services/groqService");
 const { parseRepoUrl, getRepoTree, filterCodeFiles, getFileContent } = require("../services/githubService");
 const reviewQueue = require("../queues/reviewQueue");
 
@@ -145,6 +146,22 @@ const getRepoReviews = async (req, res) => {
   }
 };
 
+const deleteRepoReview = async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) {
+      return res.status(400).json({ message: "Invalid repository review ID" });
+    }
+    const repoReview = await RepoReview.findOneAndDelete({
+      _id: req.params.id,
+      userId: req.userId,
+    });
+    if (!repoReview) return res.status(404).json({ message: "Repository review not found" });
+    res.json({ message: "Repository review deleted" });
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 const getRepoReviewStatus = async (req, res) => {
   try {
     const repoReview = await RepoReview.findOne({
@@ -169,4 +186,4 @@ const getRepoReviewStatus = async (req, res) => {
   }
 };
 
-module.exports = { submitRepoReview, getRepoReview, getRepoReviews, getRepoReviewStatus };
+module.exports = { submitRepoReview, getRepoReview, getRepoReviews, getRepoReviewStatus, deleteRepoReview };

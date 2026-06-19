@@ -1,7 +1,7 @@
 "use client";
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import styles from "./callback.module.css";
 
 function CallbackHandler() {
   const router = useRouter();
@@ -15,44 +15,19 @@ function CallbackHandler() {
     } else {
       router.push("/");
     }
-  }, []);
+  }, [router, searchParams]);
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "var(--bg-primary)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexDirection: "column",
-      gap: "16px"
-    }}>
-      <div style={{
-        width: "40px", height: "40px",
-        border: "2px solid var(--border)",
-        borderTop: "2px solid var(--accent)",
-        borderRadius: "50%",
-        animation: "spin 0.8s linear infinite"
-      }} />
-      <p style={{
-        fontFamily: "JetBrains Mono",
-        fontSize: "14px",
-        color: "var(--text-secondary)"
-      }}>
-        Authenticating...
-      </p>
-      <style>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
+    <div className={styles.page} role="status" aria-label="Authenticating with GitHub">
+      <span className="app-spinner" aria-hidden="true" />
+      <p>Authenticating…</p>
     </div>
   );
 }
 
 export default function AuthCallback() {
   return (
-    <Suspense>
+    <Suspense fallback={null}>
       <CallbackHandler />
     </Suspense>
   );

@@ -1,7 +1,7 @@
 const Chat = require("../models/Chat");
 const Review = require("../models/Review");
 const RepoReview = require("../models/RepoReview");
-const { chatCompletion } = require("../services/claudeService");
+const { chatCompletion } = require("../services/groqService");
 
 const GENERAL_SYSTEM_PROMPT =
   "You are CodeReviewAI, a helpful coding assistant. Answer questions about code quality, bugs, performance, security, refactoring, and best practices. Be concise, practical, and use code examples when helpful.";

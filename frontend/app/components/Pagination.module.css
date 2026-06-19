@@ -1,0 +1,55 @@
+.root {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.info {
+    color: var(--text-secondary);
+    font: 12px 'JetBrains Mono', monospace;
+}
+
+.buttons {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.btn {
+    padding: 8px 14px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font: 400 13px 'Space Grotesk', sans-serif;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+}
+
+.btn:hover:not(:disabled):not(.active) {
+    border-color: #504c45;
+}
+
+.btn:disabled {
+    color: var(--text-secondary);
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #0F0F0F;
+    font-weight: 600;
+    cursor: default;
+}
+
+.ellipsis {
+    color: var(--text-secondary);
+    padding: 0 4px;
+    font-size: 13px;
+    user-select: none;
+}

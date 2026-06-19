@@ -1,773 +1,85 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useAuth } from "../hooks/useAuth";
-import { useJobPolling } from "../hooks/useJobPolling";
-import Editor from "@monaco-editor/react";
-const LANGUAGES = [
-  "auto",
-  "javascript",
-  "typescript",
-  "python",
-  "java",
-  "c++",
-  "go",
-  "rust",
-];
 
-const SEVERITY_COLORS: Record<string, string> = {
-  critical: "#E05252",
-  warning: "#E8A020",
-  suggestion: "#5299E0",
-};
+import Editor from "@monaco-editor/react";
+import { useEffect, useState } from "react";
+import AppShell from "../components/AppShell";
+import { PageHeader } from "../components/UI";
+import { useJobPolling } from "../hooks/useJobPolling";
+import { apiFetch } from "../lib/api";
+import { Review, ReviewResult } from "../types";
+import styles from "./review.module.css";
+
+const languages = ["auto", "javascript", "typescript", "python", "java", "c++", "go", "rust"];
+type Tab = "issues" | "refactoring" | "summary";
+
+function ScoreBar({ label, value = 0 }: { label: string; value?: number }) {
+  return <div className={styles.scoreBar}><div><span>{label}</span><strong>{value}/100</strong></div><span className={styles.scoreBarTrack}><span style={{ width: `${Math.max(0, Math.min(value, 100))}%` }} /></span></div>;
+}
 
 export default function ReviewPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
   const [code, setCode] = useState("");
   const [language, setLanguage] = useState("auto");
-  const [reviewing, setReviewing] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("issues");
   const [filename, setFilename] = useState("");
-
-  const { polling, error: pollError, startPolling } = useJobPolling({
-    statusUrl: (id) =>
-      `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/${id}/status`,
+  const [reviewing, setReviewing] = useState(false);
+  const [result, setResult] = useState<ReviewResult | null>(null);
+  const [error, setError] = useState("");
+  const [tab, setTab] = useState<Tab>("issues");
+  const { polling, error: pollingError, startPolling } = useJobPolling({
+    statusUrl: (id) => `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/${id}/status`,
     onComplete: async (data) => {
-      const reviewId = data.reviewId as string;
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/reviews/${reviewId}`,
-        { headers: { Authorization: `Bearer ${token}` } },
-      );
-      const review = await res.json();
-      if (res.ok) {
-        setResult(review.result);
-        setActiveTab("issues");
-      }
-      setReviewing(false);
+      try { const review = await apiFetch<Review>(`/api/reviews/${String(data.reviewId)}`); setResult(review.result || null); setTab("issues"); }
+      catch (caught) { setError(caught instanceof Error ? caught.message : "Could not load the completed review."); }
+      finally { setReviewing(false); }
     },
     onFailed: () => setReviewing(false),
   });
 
   useEffect(() => {
-    if (!loading && !user) router.push("/");
-  }, [user, loading]);
-
-  const handleReview = async () => {
-    if (!code.trim()) {
-      setError("Please paste some code first.");
-      return;
-    }
-    setError("");
-    setReviewing(true);
-    setResult(null);
-
+    const draft = sessionStorage.getItem("reviewDraft");
+    if (!draft) return;
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/reviews`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({ code, language, filename }),
-        },
-      );
+      const parsed = JSON.parse(draft) as { code?: string; filename?: string; language?: string };
+      setCode(parsed.code || ""); setFilename(parsed.filename || ""); setLanguage(languages.includes(parsed.language || "") ? parsed.language || "auto" : "auto");
+    } finally { sessionStorage.removeItem("reviewDraft"); }
+  }, []);
 
-      const data = await res.json();
-      if (res.ok) {
-        if (data.result) {
-          setResult(data.result);
-          setActiveTab("issues");
-          setReviewing(false);
-        } else if (data.status === "processing" && data.reviewId) {
-          startPolling(data.reviewId);
-        }
-      } else {
-        setError(data.message || "Review failed.");
-        setReviewing(false);
-      }
-    } catch (err) {
-      setError("Something went wrong. Please try again.");
-      setReviewing(false);
-    }
+  const submit = async () => {
+    if (!code.trim()) { setError("Paste or type some code before starting a review."); return; }
+    setError(""); setReviewing(true); setResult(null);
+    try {
+      const data = await apiFetch<{ reviewId: string; status: string; result?: ReviewResult }>("/api/reviews", { method: "POST", body: JSON.stringify({ code, language, filename: filename.trim() }) });
+      if (data.result) { setResult(data.result); setReviewing(false); setTab("issues"); }
+      else startPolling(data.reviewId);
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Could not start the review."); setReviewing(false); }
   };
 
-  const ScoreBar = ({ label, value }: { label: string; value: number }) => (
-    <div style={{ marginBottom: "16px" }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          marginBottom: "6px",
-        }}
-      >
-        <span
-          style={{
-            fontFamily: "Inter",
-            fontSize: "13px",
-            color: "var(--text-secondary)",
-          }}
-        >
-          {label}
-        </span>
-        <span
-          style={{
-            fontFamily: "JetBrains Mono",
-            fontSize: "13px",
-            color: "var(--accent)",
-          }}
-        >
-          {value}/100
-        </span>
-      </div>
-      <div
-        style={{
-          height: "4px",
-          background: "var(--bg-tertiary)",
-          borderRadius: "2px",
-        }}
-      >
-        <div
-          style={{
-            height: "100%",
-            width: `${value}%`,
-            background:
-              value >= 80
-                ? "var(--success)"
-                : value >= 60
-                  ? "var(--accent)"
-                  : "var(--critical)",
-            borderRadius: "2px",
-            transition: "width 1s ease",
-          }}
-        />
-      </div>
+  const busy = reviewing || polling;
+  const editorLanguage = language === "auto" ? "javascript" : language === "c++" ? "cpp" : language;
+
+  return <AppShell>
+    <PageHeader eyebrow="Code review" title="Inspect a code snippet" description="Paste code, choose a language or use auto-detection, then review the findings and suggested improvements." />
+    <div className={`${styles.workspace} ${result ? styles.withResult : ""}`}>
+      <section className={styles.editorCard}>
+        <div className={styles.controls}>
+          <label><span>Filename <small>optional</small></span><input value={filename} onChange={(event) => setFilename(event.target.value)} placeholder="solution.py" disabled={busy} /></label>
+          <label><span>Language</span><select value={language} onChange={(event) => setLanguage(event.target.value)} disabled={busy}>{languages.map((item) => <option key={item}>{item}</option>)}</select></label>
+        </div>
+        <div className={styles.editor} aria-label="Code editor"><Editor height="430px" language={editorLanguage} value={code} onChange={(value) => setCode(value || "")} theme="vs-dark" options={{ minimap: { enabled: false }, fontSize: 13, lineHeight: 21, padding: { top: 16 }, scrollBeyondLastLine: false, wordWrap: "on", readOnly: busy, automaticLayout: true }} /></div>
+        <div className={styles.editorFooter}><span>{code.length.toLocaleString()} characters</span><button className="app-button primary" onClick={() => void submit()} disabled={busy || !code.trim()}>{busy ? "Analyzing code…" : "Review code"}</button></div>
+        <div className="app-notice"><strong>Privacy:</strong><span>Submitted code is processed and stored with your review history. Remove secrets, tokens, and personal data before submitting.</span></div>
+        {(error || pollingError) && <p className={styles.error} role="alert">{error || pollingError}</p>}
+      </section>
+
+      {result && <section className={styles.results} aria-label="Review results">
+        <div className={styles.scoreCard}><div className={styles.overall}><span>Overall score</span><strong>{result.overallScore ?? 0}</strong><small>/100</small></div><div><ScoreBar label="Readability" value={result.readability} /><ScoreBar label="Performance" value={result.performance} /><ScoreBar label="Security" value={result.security} /><ScoreBar label="Maintainability" value={result.maintainability} /></div></div>
+        <div className={styles.complexity}><div><span>Time complexity</span><strong>{result.timeComplexity || "Not determined"}</strong></div><div><span>Space complexity</span><strong>{result.spaceComplexity || "Not determined"}</strong></div></div>
+        <div className={styles.tabs} role="tablist" aria-label="Review result sections">{(["issues", "refactoring", "summary"] as Tab[]).map((item) => <button key={item} role="tab" aria-selected={tab === item} className={tab === item ? styles.active : ""} onClick={() => setTab(item)}>{item}{item === "issues" ? ` (${result.issues?.length || 0})` : ""}</button>)}</div>
+        <div className={styles.tabPanel} role="tabpanel">
+          {tab === "issues" && (result.issues?.length ? <div className={styles.issueList}>{result.issues.map((issue, index) => <article className={`${styles.issue} ${styles[issue.severity]}`} key={`${issue.title}-${index}`}><div><span>{issue.severity}</span>{issue.line && <small>Line {issue.line}</small>}</div><h3>{issue.title}</h3>{issue.description && <p>{issue.description}</p>}{issue.suggestion && <aside><strong>Suggested fix</strong>{issue.suggestion}</aside>}</article>)}</div> : <p className={styles.noData}>No issues were identified in this review.</p>)}
+          {tab === "refactoring" && (result.refactoring?.length ? <div className={styles.refactors}>{result.refactoring.map((item, index) => <article key={index}><div className={styles.codeCompare}><div><span>Before</span><pre>{item.before}</pre></div><div><span>After</span><pre>{item.after}</pre></div></div>{item.explanation && <p>{item.explanation}</p>}</article>)}</div> : <p className={styles.noData}>No refactoring examples were returned.</p>)}
+          {tab === "summary" && <div className={styles.summary}>{result.summary || "No summary was returned."}</div>}
+        </div>
+      </section>}
     </div>
-  );
-
-  return (
-    <main style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
-      {/* Navbar */}
-      <nav
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "20px 48px",
-          borderBottom: "1px solid var(--border)",
-          position: "sticky",
-          top: 0,
-          background: "var(--bg-primary)",
-          zIndex: 100,
-        }}
-      >
-        <div
-          onClick={() => router.push("/")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            cursor: "pointer",
-          }}
-        >
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              background: "var(--accent)",
-              borderRadius: "8px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "16px",
-              fontWeight: "700",
-              color: "#0F0F0F",
-              fontFamily: "Space Grotesk",
-            }}
-          >
-            C
-          </div>
-          <span
-            style={{
-              fontFamily: "Space Grotesk",
-              fontWeight: "600",
-              fontSize: "18px",
-            }}
-          >
-            CodeReviewAI
-          </span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <button
-            onClick={() => router.push("/repo-review")}
-            style={{
-              background: "transparent",
-              color: "var(--text-secondary)",
-              border: "1px solid var(--border)",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              fontFamily: "Space Grotesk",
-              fontSize: "13px",
-              cursor: "pointer",
-            }}
-          >
-            Repo Review
-          </button>
-          <button
-            onClick={() => router.push("/history")}
-            style={{
-              background: "transparent",
-              color: "var(--text-secondary)",
-              border: "1px solid var(--border)",
-              padding: "8px 16px",
-              borderRadius: "8px",
-              fontFamily: "Space Grotesk",
-              fontSize: "13px",
-              cursor: "pointer",
-            }}
-          >
-            History
-          </button>
-          {user?.avatar && (
-            <img
-              src={user.avatar}
-              alt={user.username}
-              style={{
-                width: "32px",
-                height: "32px",
-                borderRadius: "50%",
-                border: "2px solid var(--border)",
-              }}
-            />
-          )}
-        </div>
-      </nav>
-
-      <div
-        style={{ maxWidth: "1200px", margin: "0 auto", padding: "40px 48px" }}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: result ? "1fr 1fr" : "1fr",
-            gap: "32px",
-            alignItems: "start",
-          }}
-        >
-          {/* Left — Code Input */}
-          <div>
-            <div style={{ marginBottom: "24px" }}>
-              <h1
-                style={{
-                  fontFamily: "Space Grotesk",
-                  fontSize: "28px",
-                  fontWeight: "700",
-                  marginBottom: "8px",
-                  letterSpacing: "-1px",
-                }}
-              >
-                Review Code
-              </h1>
-              <p style={{ color: "var(--text-secondary)", fontSize: "14px" }}>
-                Paste your code below and get instant AI feedback.
-              </p>
-            </div>
-            {/* Filename Input */}
-            <input
-              type="text"
-              value={filename}
-              onChange={(e) => setFilename(e.target.value)}
-              placeholder="Filename (e.g. solution.py)"
-              style={{
-                width: "100%",
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border)",
-                borderRadius: "8px",
-                padding: "10px 16px",
-                color: "var(--text-primary)",
-                fontFamily: "JetBrains Mono",
-                fontSize: "13px",
-                outline: "none",
-                marginBottom: "12px",
-                transition: "border-color 0.2s",
-              }}
-              onFocus={(e) => (e.target.style.borderColor = "var(--accent)")}
-              onBlur={(e) => (e.target.style.borderColor = "var(--border)")}
-            />
-
-            {/* Language Selector */}
-            <div
-              style={{
-                display: "flex",
-                gap: "8px",
-                marginBottom: "16px",
-                flexWrap: "wrap",
-              }}
-            >
-              {LANGUAGES.map((lang) => (
-                <button
-                  key={lang}
-                  onClick={() => setLanguage(lang)}
-                  style={{
-                    background:
-                      language === lang
-                        ? "var(--accent)"
-                        : "var(--bg-secondary)",
-                    color:
-                      language === lang ? "#0F0F0F" : "var(--text-secondary)",
-                    border: `1px solid ${language === lang ? "var(--accent)" : "var(--border)"}`,
-                    padding: "6px 14px",
-                    borderRadius: "6px",
-                    fontFamily: "JetBrains Mono",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                    transition: "all 0.15s",
-                  }}
-                >
-                  {lang}
-                </button>
-              ))}
-            </div>
-
-            {/* Code Editor */}
-            <div
-              style={{
-                border: "1px solid var(--border)",
-                borderRadius: "12px",
-                overflow: "hidden",
-                height: "420px",
-              }}
-            >
-              <div
-                style={{
-                  background: "#1A1A1A",
-                  padding: "8px 16px",
-                  borderBottom: "1px solid var(--border)",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "6px",
-                }}
-              >
-                <div
-                  style={{
-                    width: "12px",
-                    height: "12px",
-                    borderRadius: "50%",
-                    background: "#E05252",
-                  }}
-                />
-                <div
-                  style={{
-                    width: "12px",
-                    height: "12px",
-                    borderRadius: "50%",
-                    background: "#E8A020",
-                  }}
-                />
-                <div
-                  style={{
-                    width: "12px",
-                    height: "12px",
-                    borderRadius: "50%",
-                    background: "#52A878",
-                  }}
-                />
-                <span
-                  style={{
-                    fontFamily: "JetBrains Mono",
-                    fontSize: "11px",
-                    color: "var(--text-secondary)",
-                    marginLeft: "8px",
-                  }}
-                >
-                  {filename || "untitled"}
-                </span>
-              </div>
-              <Editor
-                height="380px"
-                language={
-                  language === "auto"
-                    ? "javascript"
-                    : language === "c++"
-                      ? "cpp"
-                      : language
-                }
-                value={code}
-                onChange={(val) => setCode(val || "")}
-                theme="vs-dark"
-                options={{
-                  fontSize: 13,
-                  fontFamily: "JetBrains Mono",
-                  minimap: { enabled: false },
-                  scrollBeyondLastLine: false,
-                  lineNumbers: "on",
-                  renderLineHighlight: "line",
-                  padding: { top: 16, bottom: 16 },
-                  smoothScrolling: true,
-                  cursorSmoothCaretAnimation: "on",
-                  formatOnPaste: true,
-                }}
-              />
-            </div>
-
-            {(error || pollError) && (
-              <p
-                style={{
-                  color: "var(--critical)",
-                  fontFamily: "JetBrains Mono",
-                  fontSize: "12px",
-                  marginTop: "8px",
-                }}
-              >
-                ⚠ {error || pollError}
-              </p>
-            )}
-
-            <button
-              onClick={handleReview}
-              disabled={reviewing || polling}
-              style={{
-                width: "100%",
-                marginTop: "16px",
-                background: reviewing || polling ? "var(--bg-tertiary)" : "var(--accent)",
-                color: reviewing || polling ? "var(--text-secondary)" : "#0F0F0F",
-                border: "none",
-                padding: "16px",
-                borderRadius: "10px",
-                fontFamily: "Space Grotesk",
-                fontWeight: "700",
-                fontSize: "15px",
-                cursor: reviewing || polling ? "not-allowed" : "pointer",
-                transition: "all 0.2s",
-              }}
-            >
-              {reviewing || polling ? "Analyzing code..." : "Review Code →"}
-            </button>
-          </div>
-
-          {/* Right — Results */}
-          {result && (
-            <div style={{ animation: "fadeIn 0.4s ease" }}>
-              {/* Overall Score */}
-              <div
-                style={{
-                  background: "var(--bg-secondary)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "12px",
-                  padding: "24px",
-                  marginBottom: "20px",
-                  textAlign: "center",
-                }}
-              >
-                <div
-                  style={{
-                    fontFamily: "Space Grotesk",
-                    fontSize: "64px",
-                    fontWeight: "700",
-                    color:
-                      result.overallScore >= 80
-                        ? "var(--success)"
-                        : result.overallScore >= 60
-                          ? "var(--accent)"
-                          : "var(--critical)",
-                    lineHeight: "1",
-                  }}
-                >
-                  {result.overallScore}
-                </div>
-                <div
-                  style={{
-                    fontFamily: "JetBrains Mono",
-                    fontSize: "11px",
-                    color: "var(--text-secondary)",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                    marginBottom: "20px",
-                  }}
-                >
-                  Overall Score
-                </div>
-                <ScoreBar label="Readability" value={result.readability} />
-                <ScoreBar label="Performance" value={result.performance} />
-                <ScoreBar label="Security" value={result.security} />
-                <ScoreBar
-                  label="Maintainability"
-                  value={result.maintainability}
-                />
-
-                {/* Complexity */}
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "12px",
-                    marginTop: "16px",
-                  }}
-                >
-                  {[
-                    { label: "Time", value: result.timeComplexity },
-                    { label: "Space", value: result.spaceComplexity },
-                  ].map((c) => (
-                    <div
-                      key={c.label}
-                      style={{
-                        background: "var(--bg-tertiary)",
-                        borderRadius: "8px",
-                        padding: "12px",
-                        textAlign: "center",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontFamily: "JetBrains Mono",
-                          fontSize: "16px",
-                          color: "var(--accent)",
-                          fontWeight: "500",
-                        }}
-                      >
-                        {c.value}
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "JetBrains Mono",
-                          fontSize: "10px",
-                          color: "var(--text-secondary)",
-                          textTransform: "uppercase",
-                          marginTop: "4px",
-                        }}
-                      >
-                        {c.label} Complexity
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Tabs */}
-              <div
-                style={{ display: "flex", gap: "4px", marginBottom: "16px" }}
-              >
-                {["issues", "refactoring", "summary"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    style={{
-                      background:
-                        activeTab === tab
-                          ? "var(--accent)"
-                          : "var(--bg-secondary)",
-                      color:
-                        activeTab === tab ? "#0F0F0F" : "var(--text-secondary)",
-                      border: `1px solid ${activeTab === tab ? "var(--accent)" : "var(--border)"}`,
-                      padding: "8px 16px",
-                      borderRadius: "6px",
-                      fontFamily: "Space Grotesk",
-                      fontSize: "13px",
-                      fontWeight: "500",
-                      cursor: "pointer",
-                      textTransform: "capitalize",
-                    }}
-                  >
-                    {tab}{" "}
-                    {tab === "issues" && `(${result.issues?.length || 0})`}
-                  </button>
-                ))}
-              </div>
-
-              {/* Tab Content */}
-              <div style={{ maxHeight: "500px", overflowY: "auto" }}>
-                {activeTab === "issues" &&
-                  result.issues?.map((issue: any, i: number) => (
-                    <div
-                      key={i}
-                      style={{
-                        background: "var(--bg-secondary)",
-                        border: `1px solid ${SEVERITY_COLORS[issue.severity]}33`,
-                        borderLeft: `3px solid ${SEVERITY_COLORS[issue.severity]}`,
-                        borderRadius: "8px",
-                        padding: "16px",
-                        marginBottom: "12px",
-                        animation: `fadeIn 0.3s ease ${i * 0.05}s both`,
-                      }}
-                    >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontFamily: "JetBrains Mono",
-                            fontSize: "10px",
-                            color: SEVERITY_COLORS[issue.severity],
-                            textTransform: "uppercase",
-                            letterSpacing: "1px",
-                          }}
-                        >
-                          {issue.severity} · {issue.category}
-                        </span>
-                        {issue.line && (
-                          <span
-                            style={{
-                              fontFamily: "JetBrains Mono",
-                              fontSize: "10px",
-                              color: "var(--text-secondary)",
-                            }}
-                          >
-                            line {issue.line}
-                          </span>
-                        )}
-                      </div>
-                      <h4
-                        style={{
-                          fontFamily: "Space Grotesk",
-                          fontSize: "14px",
-                          fontWeight: "600",
-                          marginBottom: "6px",
-                        }}
-                      >
-                        {issue.title}
-                      </h4>
-                      <p
-                        style={{
-                          color: "var(--text-secondary)",
-                          fontSize: "13px",
-                          lineHeight: "1.5",
-                          marginBottom: "8px",
-                        }}
-                      >
-                        {issue.description}
-                      </p>
-                      {issue.suggestion && (
-                        <p
-                          style={{
-                            color: "var(--success)",
-                            fontSize: "12px",
-                            fontFamily: "JetBrains Mono",
-                          }}
-                        >
-                          → {issue.suggestion}
-                        </p>
-                      )}
-                    </div>
-                  ))}
-
-                {activeTab === "refactoring" &&
-                  result.refactoring?.map((r: any, i: number) => (
-                    <div
-                      key={i}
-                      style={{
-                        background: "var(--bg-secondary)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "8px",
-                        padding: "16px",
-                        marginBottom: "12px",
-                      }}
-                    >
-                      <div style={{ marginBottom: "10px" }}>
-                        <div
-                          style={{
-                            fontFamily: "JetBrains Mono",
-                            fontSize: "10px",
-                            color: "var(--critical)",
-                            marginBottom: "6px",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          Before
-                        </div>
-                        <pre
-                          style={{
-                            background: "var(--bg-tertiary)",
-                            padding: "10px",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            overflowX: "auto",
-                            color: "var(--text-primary)",
-                          }}
-                        >
-                          {r.before}
-                        </pre>
-                      </div>
-                      <div style={{ marginBottom: "10px" }}>
-                        <div
-                          style={{
-                            fontFamily: "JetBrains Mono",
-                            fontSize: "10px",
-                            color: "var(--success)",
-                            marginBottom: "6px",
-                            textTransform: "uppercase",
-                          }}
-                        >
-                          After
-                        </div>
-                        <pre
-                          style={{
-                            background: "var(--bg-tertiary)",
-                            padding: "10px",
-                            borderRadius: "6px",
-                            fontSize: "12px",
-                            overflowX: "auto",
-                            color: "var(--text-primary)",
-                          }}
-                        >
-                          {r.after}
-                        </pre>
-                      </div>
-                      <p
-                        style={{
-                          color: "var(--text-secondary)",
-                          fontSize: "12px",
-                          fontFamily: "Inter",
-                        }}
-                      >
-                        {r.explanation}
-                      </p>
-                    </div>
-                  ))}
-
-                {activeTab === "summary" && (
-                  <div
-                    style={{
-                      background: "var(--bg-secondary)",
-                      border: "1px solid var(--border)",
-                      borderRadius: "8px",
-                      padding: "20px",
-                    }}
-                  >
-                    <p
-                      style={{
-                        color: "var(--text-primary)",
-                        fontSize: "14px",
-                        lineHeight: "1.8",
-                        fontFamily: "Inter",
-                      }}
-                    >
-                      {result.summary}
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      <style>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(8px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
-    </main>
-  );
+  </AppShell>;
 }

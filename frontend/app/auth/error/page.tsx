@@ -1,46 +1,17 @@
 "use client";
 import { useRouter } from "next/navigation";
+import styles from "./error.module.css";
 
 export default function AuthError() {
   const router = useRouter();
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      background: "var(--bg-primary)",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      flexDirection: "column",
-      gap: "16px"
-    }}>
-      <span style={{ fontSize: "48px" }}>⚠</span>
-      <h2 style={{
-        fontFamily: "Space Grotesk",
-        fontSize: "24px",
-        color: "var(--critical)"
-      }}>
-        Authentication Failed
-      </h2>
-      <p style={{
-        fontFamily: "Inter",
-        color: "var(--text-secondary)",
-        fontSize: "14px"
-      }}>
-        Something went wrong during GitHub login.
-      </p>
-      <button onClick={() => router.push("/")} style={{
-        background: "var(--accent)",
-        color: "#0F0F0F",
-        border: "none",
-        padding: "12px 28px",
-        borderRadius: "8px",
-        fontFamily: "Space Grotesk",
-        fontWeight: "600",
-        cursor: "pointer",
-        marginTop: "8px"
-      }}>
-        Back to Home
+    <div className={styles.page} role="alert" aria-labelledby="auth-err-title">
+      <span className={styles.icon} aria-hidden="true">⚠</span>
+      <h2 id="auth-err-title" className={styles.title}>Authentication failed</h2>
+      <p className={styles.body}>Something went wrong during GitHub login. Please try again.</p>
+      <button className="app-button primary" onClick={() => router.push("/")}>
+        Back to home
       </button>
     </div>
   );

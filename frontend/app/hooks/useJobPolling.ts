@@ -4,6 +4,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 type JobStatus = {
   status: string;
   error?: string;
+  reviewId?: string;
+  repoReviewId?: string;
   [key: string]: unknown;
 };
 

@@ -1,213 +1,64 @@
 "use client";
-import { useState, useEffect } from "react";
+
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "../hooks/useAuth";
+import AppIcon from "../components/AppIcon";
+import AppShell from "../components/AppShell";
+import { PageHeader } from "../components/UI";
 import { useJobPolling } from "../hooks/useJobPolling";
+import { apiFetch } from "../lib/api";
+import styles from "./repo-review.module.css";
+
+const steps = ["Reading the repository tree", "Selecting reviewable source files", "Analyzing code quality and risks", "Preparing the repository report"];
 
 export default function RepoReviewPage() {
-  const { user, loading } = useAuth();
   const router = useRouter();
   const [repoUrl, setRepoUrl] = useState("");
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
-  const [status, setStatus] = useState("");
-
-  const { startPolling, polling, error: pollError } = useJobPolling({
-    statusUrl: (id) =>
-      `${process.env.NEXT_PUBLIC_API_URL}/api/repo-reviews/${id}/status`,
-    onComplete: (data) => {
-      router.push(`/repo-review/${data.repoReviewId}`);
-    },
-    onFailed: () => {
-      setSubmitting(false);
-    },
+  const [submitting, setSubmitting] = useState(false);
+  const [step, setStep] = useState(0);
+  const { polling, startPolling } = useJobPolling({
+    statusUrl: (id) => `${process.env.NEXT_PUBLIC_API_URL}/api/repo-reviews/${id}/status`,
+    onComplete: (data) => router.push(`/repo-review/${String(data.repoReviewId)}`),
+    onFailed: (data) => { setSubmitting(false); setError(data.error || "Repository review failed."); },
   });
 
+  const busy = submitting || polling;
   useEffect(() => {
-    if (!loading && !user) router.push("/");
-  }, [user, loading]);
+    if (!busy) return;
+    const timer = window.setInterval(() => setStep((current) => Math.min(current + 1, steps.length - 1)), 8500);
+    return () => window.clearInterval(timer);
+  }, [busy]);
 
-  useEffect(() => {
-    if (pollError) setError(pollError);
-  }, [pollError]);
-
-  const handleSubmit = async () => {
-    if (!repoUrl.trim() || !repoUrl.includes("github.com")) {
-      setError("Please enter a valid GitHub repo URL.");
-      return;
-    }
-    setError("");
-    setSubmitting(true);
-    setStatus("Starting review...");
-
+  const submit = async (event: FormEvent) => {
+    event.preventDefault(); setError("");
+    let parsed: URL;
+    try { parsed = new URL(repoUrl.trim()); } catch { setError("Enter a complete GitHub repository URL."); return; }
+    if (parsed.protocol !== "https:" || parsed.hostname !== "github.com" || parsed.pathname.split("/").filter(Boolean).length < 2) { setError("Use a public GitHub URL such as https://github.com/owner/repository."); return; }
+    setSubmitting(true); setStep(0);
     try {
-      const token = localStorage.getItem("token");
-      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/repo-reviews`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ repoUrl }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setStatus("Analyzing repository files...");
-        startPolling(data.repoReviewId);
-      } else {
-        setError(data.message || "Failed to start review.");
-        setSubmitting(false);
-      }
-    } catch (err) {
-      setError("Something went wrong.");
-      setSubmitting(false);
-    }
+      const data = await apiFetch<{ repoReviewId: string; status: string }>("/api/repo-reviews", { method: "POST", body: JSON.stringify({ repoUrl: parsed.toString() }) });
+      startPolling(data.repoReviewId);
+    } catch (caught) { setSubmitting(false); setError(caught instanceof Error ? caught.message : "Could not start the repository review."); }
   };
 
-  const isBusy = submitting || polling;
-
-  return (
-    <main style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
-      <nav style={{
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        padding: "20px 48px",
-        borderBottom: "1px solid var(--border)",
-        position: "sticky",
-        top: 0,
-        background: "var(--bg-primary)",
-        zIndex: 100
-      }}>
-        <div onClick={() => router.push("/")} style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-          <div style={{
-            width: "32px", height: "32px",
-            background: "var(--accent)",
-            borderRadius: "8px",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "16px", fontWeight: "700", color: "#0F0F0F",
-            fontFamily: "Space Grotesk"
-          }}>C</div>
-          <span style={{ fontFamily: "Space Grotesk", fontWeight: "600", fontSize: "18px" }}>
-            CodeReviewAI
-          </span>
-        </div>
-        <button onClick={() => router.push("/dashboard")} style={{
-          background: "transparent",
-          color: "var(--text-secondary)",
-          border: "1px solid var(--border)",
-          padding: "8px 16px",
-          borderRadius: "8px",
-          fontFamily: "Space Grotesk",
-          fontSize: "13px",
-          cursor: "pointer"
-        }}>
-          ← Dashboard
-        </button>
-      </nav>
-
-      <div style={{ maxWidth: "700px", margin: "0 auto", padding: "100px 48px" }}>
-        <div style={{ textAlign: "center", marginBottom: "40px" }}>
-          <div style={{ fontSize: "40px", marginBottom: "16px" }}>⬡</div>
-          <h1 style={{
-            fontFamily: "Space Grotesk",
-            fontSize: "32px",
-            fontWeight: "700",
-            marginBottom: "12px",
-            letterSpacing: "-1px"
-          }}>
-            Review an entire repository
-          </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: "15px" }}>
-            Paste a public GitHub repo URL. We'll analyze up to 8 key files and give you an aggregated report.
-          </p>
-        </div>
-
-        <div style={{
-          background: "var(--bg-secondary)",
-          border: "1px solid var(--border)",
-          borderRadius: "12px",
-          padding: "24px"
-        }}>
-          <input
-            type="text"
-            value={repoUrl}
-            onChange={(e) => setRepoUrl(e.target.value)}
-            placeholder="https://github.com/username/repository"
-            disabled={isBusy}
-            style={{
-              width: "100%",
-              background: "var(--bg-tertiary)",
-              border: "1px solid var(--border)",
-              borderRadius: "8px",
-              padding: "14px 16px",
-              color: "var(--text-primary)",
-              fontFamily: "JetBrains Mono",
-              fontSize: "14px",
-              outline: "none",
-              marginBottom: "16px"
-            }}
-            onFocus={e => e.target.style.borderColor = "var(--accent)"}
-            onBlur={e => e.target.style.borderColor = "var(--border)"}
-          />
-
-          {error && (
-            <p style={{ color: "var(--critical)", fontFamily: "JetBrains Mono", fontSize: "12px", marginBottom: "16px" }}>
-              ⚠ {error}
-            </p>
-          )}
-
-          {status && isBusy && (
-            <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "16px" }}>
-              <div style={{
-                width: "16px", height: "16px",
-                border: "2px solid var(--border)",
-                borderTop: "2px solid var(--accent)",
-                borderRadius: "50%",
-                animation: "spin 0.8s linear infinite"
-              }} />
-              <span style={{ fontFamily: "JetBrains Mono", fontSize: "13px", color: "var(--accent)" }}>
-                {status}
-              </span>
-            </div>
-          )}
-
-          <button
-            onClick={handleSubmit}
-            disabled={isBusy}
-            style={{
-              width: "100%",
-              background: isBusy ? "var(--bg-tertiary)" : "var(--accent)",
-              color: isBusy ? "var(--text-secondary)" : "#0F0F0F",
-              border: "none",
-              padding: "14px",
-              borderRadius: "8px",
-              fontFamily: "Space Grotesk",
-              fontWeight: "700",
-              fontSize: "15px",
-              cursor: isBusy ? "not-allowed" : "pointer",
-            }}
-          >
-            {isBusy ? "Reviewing repository..." : "Analyze Repository →"}
-          </button>
-        </div>
-
-        <p style={{
-          textAlign: "center",
-          color: "var(--text-secondary)",
-          fontSize: "12px",
-          marginTop: "16px",
-          fontFamily: "JetBrains Mono"
-        }}>
-          This may take 30-60 seconds depending on repo size
-        </p>
-      </div>
-
-      <style>{`
-        @keyframes spin { to { transform: rotate(360deg); } }
-      `}</style>
-    </main>
-  );
+  return <AppShell>
+    <PageHeader eyebrow="Repository review" title="Review a public GitHub repository" description="Get an aggregated assessment across a focused sample of source files." />
+    <div className={styles.layout}>
+      <section className={styles.formCard}>
+        <form onSubmit={(event) => void submit(event)}>
+          <label htmlFor="repo-url">GitHub repository URL</label>
+          <div className={styles.inputWrap}><AppIcon name="repo" size={18} /><input id="repo-url" type="url" value={repoUrl} onChange={(event) => setRepoUrl(event.target.value)} placeholder="https://github.com/owner/repository" disabled={busy} autoComplete="url" aria-describedby="repo-help repo-error" /></div>
+          <p id="repo-help" className={styles.help}>Only public repositories are supported. The URL is stored with your report.</p>
+          {error && <p id="repo-error" className={styles.error} role="alert">{error}</p>}
+          <button className="app-button primary" type="submit" disabled={busy || !repoUrl.trim()}>{busy ? "Review in progress" : "Analyze repository"}</button>
+        </form>
+        {busy && <div className={styles.progress} role="status" aria-live="polite"><div className={styles.progressTop}><span className="app-spinner" /><div><strong>{steps[step]}</strong><p>Repository reviews usually take 30–60 seconds.</p></div></div><div className={styles.progressBar}><span style={{ width: `${((step + 1) / steps.length) * 100}%` }} /></div><ol>{steps.map((label, index) => <li className={index <= step ? styles.done : ""} key={label}><span>{index < step ? "✓" : index + 1}</span>{label}</li>)}</ol></div>}
+      </section>
+      <aside className={styles.info}>
+        <div><p className="app-eyebrow">What gets reviewed</p><h2>A representative sample, not every file</h2><p>CodeReviewAI selects up to eight supported source files under 30 KB, skipping generated and dependency folders.</p></div>
+        <ul><li><strong>Included</strong><span>Common JavaScript, TypeScript, Python, Java, C-family, Go, Rust, web, and database files.</span></li><li><strong>Skipped</strong><span>Dependencies, build output, generated folders, and files over 30 KB.</span></li><li><strong>Privacy</strong><span>File contents are processed for analysis and saved in your review report. Do not submit repositories containing secrets.</span></li></ul>
+      </aside>
+    </div>
+  </AppShell>;
 }

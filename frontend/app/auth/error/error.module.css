@@ -1,0 +1,29 @@
+.page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 14px;
+    background: var(--bg-primary);
+    text-align: center;
+    padding: 24px;
+}
+
+.icon {
+    font-size: 48px;
+    line-height: 1;
+}
+
+.title {
+    color: var(--critical);
+    font: 600 24px 'Space Grotesk', sans-serif;
+}
+
+.body {
+    max-width: 380px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 6px;
+}

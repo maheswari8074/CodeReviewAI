@@ -1,0 +1,386 @@
+.workspace {
+    display: grid;
+    grid-template-columns: minmax(0, 780px);
+    gap: 20px;
+}
+
+.workspace.withResult {
+    grid-template-columns: minmax(0, 1fr) minmax(380px, .85fr);
+    align-items: start;
+}
+
+.editorCard,
+.results>* {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+}
+
+.editorCard {
+    padding: 18px;
+}
+
+.controls {
+    margin-bottom: 14px;
+    display: grid;
+    grid-template-columns: 1fr 170px;
+    gap: 10px;
+}
+
+.controls label>span {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-secondary);
+    font: 9px 'JetBrains Mono';
+    text-transform: uppercase;
+    letter-spacing: .6px;
+}
+
+.controls small {
+    color: #5f5b54;
+}
+
+.controls input,
+.controls select {
+    width: 100%;
+    height: 40px;
+    padding: 0 11px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    outline: 0;
+    color: var(--text-primary);
+    background: var(--bg-primary);
+    font-size: 11px;
+}
+
+.controls input:focus,
+.controls select:focus {
+    border-color: var(--accent);
+}
+
+.editor {
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+}
+
+.editorFooter {
+    padding: 14px 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.editorFooter>span {
+    color: var(--text-secondary);
+    font: 9px 'JetBrains Mono';
+}
+
+.editorFooter button:disabled {
+    opacity: .55;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.error {
+    margin-top: 12px;
+    color: #e88983;
+    font-size: 11px;
+}
+
+.results {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.scoreCard {
+    padding: 20px;
+    display: grid;
+    grid-template-columns: 110px 1fr;
+    gap: 24px;
+}
+
+.overall {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: center;
+}
+
+.overall span {
+    width: 100%;
+    margin-bottom: 5px;
+    color: var(--text-secondary);
+    font: 8px 'JetBrains Mono';
+    text-transform: uppercase;
+}
+
+.overall strong {
+    color: var(--accent);
+    font: 650 39px 'Space Grotesk';
+}
+
+.overall small {
+    align-self: end;
+    margin: 0 0 7px 3px;
+    color: var(--text-secondary);
+    font-size: 9px;
+}
+
+.scoreBar {
+    margin-bottom: 9px;
+}
+
+.scoreBar:last-child {
+    margin: 0;
+}
+
+.scoreBar>div {
+    margin-bottom: 4px;
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-secondary);
+    font-size: 9px;
+}
+
+.scoreBar strong {
+    color: var(--text-primary);
+    font: 500 8px 'JetBrains Mono';
+}
+
+.scoreBarTrack {
+    height: 3px;
+    display: block;
+    border-radius: 2px;
+    background: var(--bg-tertiary);
+}
+
+.scoreBarTrack>span {
+    height: 100%;
+    display: block;
+    border-radius: inherit;
+    background: var(--accent);
+}
+
+.complexity {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.complexity>div {
+    padding: 15px 18px;
+}
+
+.complexity>div+div {
+    border-left: 1px solid var(--border);
+}
+
+.complexity span,
+.complexity strong {
+    display: block;
+}
+
+.complexity span {
+    margin-bottom: 5px;
+    color: var(--text-secondary);
+    font: 8px 'JetBrains Mono';
+    text-transform: uppercase;
+}
+
+.complexity strong {
+    color: var(--accent);
+    font: 600 12px 'Space Grotesk';
+}
+
+.tabs {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    background: var(--bg-secondary);
+}
+
+.tabs button {
+    flex: 1;
+    min-height: 40px;
+    border: 0;
+    border-right: 1px solid var(--border);
+    color: var(--text-secondary);
+    background: transparent;
+    font-size: 9px;
+    text-transform: capitalize;
+    cursor: pointer;
+}
+
+.tabs button:last-child {
+    border: 0;
+}
+
+.tabs button.active {
+    color: var(--accent);
+    background: var(--accent-dim);
+}
+
+.tabPanel {
+    border: 0;
+    background: transparent;
+}
+
+.issueList,
+.refactors {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.issue {
+    padding: 15px;
+    border-left: 2px solid;
+}
+
+.issue.critical {
+    border-left-color: var(--critical);
+}
+
+.issue.warning {
+    border-left-color: var(--warning);
+}
+
+.issue.suggestion {
+    border-left-color: var(--suggestion);
+}
+
+.issue>div {
+    display: flex;
+    justify-content: space-between;
+}
+
+.issue>div span,
+.issue>div small {
+    font: 8px 'JetBrains Mono';
+    text-transform: uppercase;
+}
+
+.issue>div span {
+    color: var(--accent);
+}
+
+.issue>div small {
+    color: var(--text-secondary);
+}
+
+.issue h3 {
+    margin: 8px 0 6px;
+    font-size: 13px;
+}
+
+.issue p,
+.issue aside {
+    color: var(--text-secondary);
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.issue aside {
+    margin-top: 10px;
+    padding: 9px;
+    border-radius: 5px;
+    background: var(--bg-tertiary);
+}
+
+.issue aside strong {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--success);
+    font-size: 8px;
+    text-transform: uppercase;
+}
+
+.refactors article {
+    padding: 15px;
+}
+
+.codeCompare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+}
+
+.codeCompare span {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-secondary);
+    font: 8px 'JetBrains Mono';
+    text-transform: uppercase;
+}
+
+.codeCompare pre {
+    max-height: 190px;
+    padding: 10px;
+    overflow: auto;
+    border-radius: 5px;
+    color: var(--text-primary);
+    background: var(--bg-tertiary);
+    font-size: 9px;
+    white-space: pre-wrap;
+}
+
+.refactors article>p {
+    margin-top: 10px;
+    color: var(--text-secondary);
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.summary,
+.noData {
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    background: var(--bg-secondary);
+    font-size: 11px;
+    line-height: 1.75;
+}
+
+.noData {
+    text-align: center;
+}
+
+@media (max-width: 1080px) {
+    .workspace.withResult {
+        grid-template-columns: 1fr;
+    }
+
+    .results {
+        max-width: 780px;
+    }
+}
+
+@media (max-width: 560px) {
+    .controls {
+        grid-template-columns: 1fr;
+    }
+
+    .scoreCard {
+        grid-template-columns: 1fr;
+    }
+
+    .complexity {
+        grid-template-columns: 1fr;
+    }
+
+    .complexity>div+div {
+        border-left: 0;
+        border-top: 1px solid var(--border);
+    }
+
+    .codeCompare {
+        grid-template-columns: 1fr;
+    }
+
+    .editorCard {
+        padding: 12px;
+    }
+}

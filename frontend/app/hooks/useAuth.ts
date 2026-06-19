@@ -31,7 +31,7 @@ export const useAuth = () => {
         } else {
           localStorage.removeItem("token");
         }
-      } catch (err) {
+      } catch {
         localStorage.removeItem("token");
       } finally {
         setLoading(false);

@@ -1,0 +1,254 @@
+.report {
+    display: grid;
+    grid-template-columns: 270px 1fr;
+    gap: 16px;
+    align-items: start;
+}
+
+.side,
+.section {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--bg-secondary);
+}
+
+.side {
+    position: sticky;
+    top: 24px;
+    padding: 22px;
+}
+
+.overall {
+    padding-bottom: 20px;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.overall span {
+    display: block;
+    color: var(--text-secondary);
+    font: 9px 'JetBrains Mono';
+    text-transform: uppercase;
+}
+
+.overall strong {
+    color: var(--accent);
+    font: 650 48px 'Space Grotesk';
+}
+
+.overall small {
+    color: var(--text-secondary);
+    font-size: 10px;
+}
+
+.score {
+    margin-bottom: 13px;
+}
+
+.score>div {
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    color: var(--text-secondary);
+    font-size: 9px;
+}
+
+.scoreVal {
+    color: var(--text-primary);
+    font: 500 8px 'JetBrains Mono';
+}
+
+.scoreTrack {
+    height: 3px;
+    display: block;
+    border-radius: 2px;
+    background: var(--bg-tertiary);
+}
+
+.scoreTrack>span {
+    height: 100%;
+    display: block;
+    border-radius: inherit;
+    background: var(--accent);
+}
+
+.complexity {
+    margin-top: 21px;
+    padding-top: 17px;
+    border-top: 1px solid var(--border);
+}
+
+.complexity div+div {
+    margin-top: 13px;
+}
+
+.complexity span,
+.complexity strong {
+    display: block;
+}
+
+.complexity span {
+    margin-bottom: 4px;
+    color: var(--text-secondary);
+    font: 8px 'JetBrains Mono';
+    text-transform: uppercase;
+}
+
+.complexity strong {
+    color: var(--accent);
+    font-size: 12px;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.section {
+    padding: 20px;
+}
+
+.section>h2 {
+    margin-bottom: 15px;
+    font-size: 17px;
+}
+
+.summary {
+    color: #b4aea4;
+    font-size: 12px;
+    line-height: 1.75;
+}
+
+.empty {
+    color: var(--text-secondary);
+    font-size: 11px;
+}
+
+.issues,
+.refactors {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+}
+
+.issue {
+    padding: 14px;
+    border: 1px solid var(--border);
+    border-left: 2px solid;
+    border-radius: 7px;
+    background: var(--bg-primary);
+}
+
+.critical {
+    border-left-color: var(--critical);
+}
+
+.warning {
+    border-left-color: var(--warning);
+}
+
+.suggestion {
+    border-left-color: var(--suggestion);
+}
+
+.issueTop {
+    display: flex;
+    justify-content: space-between;
+}
+
+.issueTop span,
+.issueTop small {
+    font: 8px 'JetBrains Mono';
+    text-transform: uppercase;
+}
+
+.issueTop span {
+    color: var(--accent);
+}
+
+.issueTop small {
+    color: var(--text-secondary);
+}
+
+.issue h3 {
+    margin: 7px 0 5px;
+    font-size: 13px;
+}
+
+.issue p,
+.issue aside {
+    color: var(--text-secondary);
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+.issue aside {
+    margin-top: 9px;
+    padding: 9px;
+    border-radius: 5px;
+    background: var(--bg-tertiary);
+}
+
+.issue aside b {
+    display: block;
+    margin-bottom: 3px;
+    color: var(--success);
+    font-size: 8px;
+    text-transform: uppercase;
+}
+
+.refactor {
+    padding-top: 15px;
+    border-top: 1px solid var(--border);
+}
+
+.refactor:first-child {
+    padding-top: 0;
+    border: 0;
+}
+
+.compare {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+}
+
+.compare span {
+    display: block;
+    margin-bottom: 5px;
+    color: var(--text-secondary);
+    font: 8px 'JetBrains Mono';
+    text-transform: uppercase;
+}
+
+.compare pre {
+    max-height: 240px;
+    padding: 11px;
+    overflow: auto;
+    border-radius: 6px;
+    background: var(--bg-primary);
+    font-size: 9px;
+    white-space: pre-wrap;
+}
+
+.refactor>p {
+    margin-top: 9px;
+    color: var(--text-secondary);
+    font-size: 10px;
+    line-height: 1.6;
+}
+
+@media (max-width: 800px) {
+    .report {
+        grid-template-columns: 1fr;
+    }
+
+    .side {
+        position: static;
+    }
+
+    .compare {
+        grid-template-columns: 1fr;
+    }
+}

@@ -1,868 +1,422 @@
 "use client";
+
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useAuth } from "./hooks/useAuth";
-const DEMO_CODE = `def find_duplicates(arr):
-    duplicates = []
-    for i in range(len(arr)):
-        for j in range(len(arr)):
-            if i != j and arr[i] == arr[j]:
-                if arr[i] not in duplicates:
-                    duplicates.append(arr[i])
-    return duplicates`;
 
-const DEMO_ISSUES = [
-  {
-    severity: "critical",
-    title: "O(n²) time complexity",
-    desc: "Nested loops cause quadratic performance on large inputs.",
-  },
-  {
-    severity: "warning",
-    title: "Redundant membership check",
-    desc: "'not in duplicates' is O(n), making this O(n³) worst case.",
-  },
-  {
-    severity: "suggestion",
-    title: "Use a set for O(n) solution",
-    desc: "Track seen elements with a hash set for linear time.",
-  },
+type IconName = "arrow" | "chat" | "chart" | "check" | "code" | "file" | "github" | "history" | "repo" | "shield" | "star" | "zap" | "lock";
+
+function Icon({ name, size = 20 }: { name: IconName; size?: number }) {
+  const paths: Record<IconName, React.ReactNode> = {
+    arrow:   <><path d="M5 12h14" /><path d="m13 6 6 6-6 6" /></>,
+    chat:    <><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4Z" /><path d="M8 9h8M8 13h5" /></>,
+    chart:   <><path d="M4 19V9M10 19V5M16 19v-7M22 19H2" /></>,
+    check:   <path d="m5 12 4 4L19 6" />,
+    code:    <><path d="m8 9-4 3 4 3M16 9l4 3-4 3M14 5l-4 14" /></>,
+    file:    <><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" /><path d="M14 2v6h6M8 13h8M8 17h6" /></>,
+    github:  <><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3.3-.4 6.8-1.6 6.8-7A5.4 5.4 0 0 0 19.3 4 5 5 0 0 0 19.1.5S18 0 15 2a13.4 13.4 0 0 0-7 0C5-.1 3.9.5 3.9.5A5 5 0 0 0 3.7 4a5.4 5.4 0 0 0-1.5 3.7c0 5.4 3.5 6.6 6.8 7A4.8 4.8 0 0 0 8 18v4" /><path d="M8 19c-3 .9-3-1.5-4-2" /></>,
+    history: <><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5M12 7v5l3 2" /></>,
+    repo:    <><path d="M3 3h7a2 2 0 0 1 2 2v16a2 2 0 0 0-2-2H3Z" /><path d="M21 3h-7a2 2 0 0 0-2 2v16a2 2 0 0 1 2-2h7Z" /></>,
+    shield:  <><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /><path d="m9 12 2 2 4-4" /></>,
+    star:    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />,
+    zap:     <><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z" /></>,
+    lock:    <><rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>,
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      {paths[name]}
+    </svg>
+  );
+}
+
+/* ── Hero mockup data ── */
+const codeLines = [
+  { n: 1,  tokens: [{ t: "keyword", v: "def " }, { t: "fn", v: "find_duplicates" }, { t: "plain", v: "(arr):" }] },
+  { n: 2,  tokens: [{ t: "plain", v: "    duplicates = []" }] },
+  { n: 3,  tokens: [{ t: "keyword", v: "    for " }, { t: "plain", v: "i " }, { t: "keyword", v: "in " }, { t: "fn", v: "range" }, { t: "plain", v: "(" }, { t: "fn", v: "len" }, { t: "plain", v: "(arr)):" }] },
+  { n: 4,  tokens: [{ t: "keyword", v: "        for " }, { t: "plain", v: "j " }, { t: "keyword", v: "in " }, { t: "fn", v: "range" }, { t: "plain", v: "(" }, { t: "fn", v: "len" }, { t: "plain", v: "(arr)):" }] },
+  { n: 5,  tokens: [{ t: "keyword", v: "            if " }, { t: "plain", v: "i != j " }, { t: "keyword", v: "and " }, { t: "plain", v: "arr[i] == arr[j]:" }] },
+  { n: 6,  tokens: [{ t: "plain", v: "                duplicates." }, { t: "fn", v: "append" }, { t: "plain", v: "(arr[i])" }] },
+  { n: 7,  tokens: [{ t: "keyword", v: "    return " }, { t: "plain", v: "duplicates" }] },
 ];
 
-const SEVERITY_COLORS: Record<string, string> = {
-  critical: "#E05252",
-  warning: "#E8A020",
-  suggestion: "#5299E0",
-};
+const findings = [
+  { tone: "red",   label: "Critical",   line: "L3–4", title: "O(n²) quadratic loop", delay: "0ms" },
+  { tone: "amber", label: "Warning",    line: "L5",   title: "Repeated membership test", delay: "120ms" },
+  { tone: "blue",  label: "Suggestion", line: "L1",   title: "Replace with Set-based pass", delay: "240ms" },
+];
+
+const scoreDimensions = [
+  { label: "Readability",     pct: 78 },
+  { label: "Performance",     pct: 38 },
+  { label: "Security",        pct: 91 },
+  { label: "Maintainability", pct: 62 },
+];
+
+/* ── Features ── */
+type FeatureItem = { icon: IconName; eyebrow: string; title: string; text: string; meta: string; accent: string };
+const features: FeatureItem[] = [
+  { icon: "code",    eyebrow: "Snippet review",    title: "Find what's hiding in your code",       text: "Paste any snippet. Get severity-ranked issues, Big O analysis, and concrete refactors in seconds.",          meta: "Auto-detect + 7 languages", accent: "#E8A020" },
+  { icon: "repo",    eyebrow: "Repository review", title: "Zoom out to the whole repository",       text: "Submit a public GitHub URL. CodeReviewAI samples key files and returns one aggregated health report.",       meta: "Up to 8 key files",          accent: "#5299E0" },
+  { icon: "chat",    eyebrow: "AI chat",           title: "Keep asking until it clicks",            text: "Ask follow-up questions about any review, or use the general assistant for code and design questions.",      meta: "Review-aware context",       accent: "#52A878" },
+  { icon: "chart",   eyebrow: "Analytics",         title: "See quality improve over time",          text: "Track review volume, average scores, language usage, and quality trends right from your dashboard.",         meta: "Score trends + history",     accent: "#C87ED4" },
+  { icon: "file",    eyebrow: "PDF reports",       title: "Turn findings into a shareable artifact", text: "Export a clean PDF with score breakdowns, issues, complexity notes, and suggested improvements.",           meta: "One-click export",           accent: "#E8A020" },
+  { icon: "history", eyebrow: "Review history",    title: "Every review stays within reach",        text: "Return to completed reviews, rerun them with a single click, or delete what you no longer need.",           meta: "Search + filter timeline",   accent: "#5299E0" },
+];
+
+/* ── Tech badges ── */
+const techStack = ["Next.js 15", "TypeScript", "Node.js", "MongoDB", "Redis", "Groq AI", "GitHub OAuth", "JWT"];
 
 export default function Home() {
   const router = useRouter();
-  const [typedCode, setTypedCode] = useState("");
-  const [showIssues, setShowIssues] = useState(false);
-  const [visibleIssues, setVisibleIssues] = useState(0);
-  const [scanning, setScanning] = useState(false);
-  const [score, setScore] = useState<number | null>(null);
   const { user } = useAuth();
+  const [scanDone, setScanDone] = useState(false);
+  const [scoreVisible, setScoreVisible] = useState(false);
+
   useEffect(() => {
-    // Type the demo code
-    let i = 0;
-    const typeTimer = setInterval(() => {
-      if (i < DEMO_CODE.length) {
-        setTypedCode(DEMO_CODE.slice(0, i + 1));
-        i++;
-      } else {
-        clearInterval(typeTimer);
-        // Start scanning after typing
-        setTimeout(() => {
-          setScanning(true);
-          setTimeout(() => {
-            setScanning(false);
-            setShowIssues(true);
-            setScore(62);
-            // Show issues one by one
-            let issueCount = 0;
-            const issueTimer = setInterval(() => {
-              issueCount++;
-              setVisibleIssues(issueCount);
-              if (issueCount >= DEMO_ISSUES.length) clearInterval(issueTimer);
-            }, 400);
-          }, 2000);
-        }, 500);
-      }
-    }, 18);
-    return () => clearInterval(typeTimer);
+    const t1 = window.setTimeout(() => setScanDone(true), 1100);
+    const t2 = window.setTimeout(() => setScoreVisible(true), 600);
+    return () => { window.clearTimeout(t1); window.clearTimeout(t2); };
   }, []);
 
-  const handleLogin = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/github`;
-  };
+  const login = () => { window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/github`; };
+  const go = () => (user ? router.push("/dashboard") : login());
 
   return (
-    <main style={{ minHeight: "100vh", background: "var(--bg-primary)" }}>
-      <div className="dot-grid" />
-      <div className="hero-bg" />
-      {/* Navbar */}
-      <nav
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          padding: "20px 48px",
-          borderBottom: "1px solid var(--border)",
-          position: "sticky",
-          top: 0,
-          background: "var(--bg-primary)",
-          zIndex: 100,
-        }}
-      >
-        <div
-          onClick={() => router.push("/")}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "10px",
-            cursor: "pointer",
-          }}
-        >
-          <div
-            style={{
-              width: "32px",
-              height: "32px",
-              background: "var(--accent)",
-              borderRadius: "8px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "16px",
-              fontWeight: "700",
-              color: "#0F0F0F",
-              fontFamily: "Space Grotesk",
-            }}
-          >
-            C
-          </div>
-          <span
-            style={{
-              fontFamily: "Space Grotesk",
-              fontWeight: "600",
-              fontSize: "18px",
-            }}
-          >
-            CodeReviewAI
-          </span>
+    <main className="hp">
+
+      {/* ── subtle grid + glows ── */}
+      <div className="hp-grid" aria-hidden="true" />
+      <div className="hp-glow-a" aria-hidden="true" />
+      <div className="hp-glow-b" aria-hidden="true" />
+
+      {/* ════ NAV ════ */}
+      <nav className="hp-nav" aria-label="Main navigation">
+        <button className="hp-brand" onClick={() => router.push("/")} aria-label="CodeReviewAI home">
+          <span className="hp-brand-mark"><Icon name="code" size={17} /></span>
+          <span>CodeReview<em>AI</em></span>
+        </button>
+
+        <div className="hp-nav-links">
+          <a href="#features">Features</a>
+          <a href="#workflow">How it works</a>
+          <a href="#stack">Tech stack</a>
         </div>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-          <a
-            href="#features"
-            style={{
-              color: "var(--text-secondary)",
-              textDecoration: "none",
-              fontFamily: "Inter",
-              fontSize: "14px",
-            }}
-          >
-            Features
-          </a>
-          <a
-            href="#how-it-works"
-            style={{
-              color: "var(--text-secondary)",
-              textDecoration: "none",
-              fontFamily: "Inter",
-              fontSize: "14px",
-            }}
-          >
-            How it works
-          </a>
-          {user ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-              <img
-                src={user.avatar}
-                alt={user.username}
-                style={{
-                  width: "32px",
-                  height: "32px",
-                  borderRadius: "50%",
-                  border: "2px solid var(--border)",
-                }}
-              />
-              <button
-                onClick={() => router.push("/dashboard")}
-                style={{
-                  background: "var(--accent)",
-                  color: "#0F0F0F",
-                  border: "none",
-                  padding: "10px 24px",
-                  borderRadius: "8px",
-                  fontFamily: "Space Grotesk",
-                  fontWeight: "600",
-                  fontSize: "14px",
-                  cursor: "pointer",
-                }}
-              >
-                Go to Dashboard
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={handleLogin}
-              style={{
-                background: "var(--accent)",
-                color: "#0F0F0F",
-                border: "none",
-                padding: "10px 24px",
-                borderRadius: "8px",
-                fontFamily: "Space Grotesk",
-                fontWeight: "600",
-                fontSize: "14px",
-                cursor: "pointer",
-              }}
-            >
-              Login with GitHub
-            </button>
-          )}
+
+        <div className="hp-nav-end">
+          {user?.avatar && <Image src={user.avatar} alt="" width={30} height={30} className="hp-avatar" unoptimized />}
+          <button className="hp-btn hp-btn-sm" onClick={go}>
+            {user ? "Open dashboard" : <><Icon name="github" size={16} /> Sign in with GitHub</>}
+          </button>
         </div>
       </nav>
 
-      {/* Hero */}
-      <section
-        style={{
-          maxWidth: "1200px",
-          margin: "0 auto",
-          padding: "80px 48px",
-          display: "grid",
-          gridTemplateColumns: "1fr 1fr",
-          gap: "64px",
-          alignItems: "center",
-        }}
-      >
-        {/* Left */}
-        <div>
-          <div
-            style={{
-              display: "inline-block",
-              background: "var(--accent-dim)",
-              border: "1px solid var(--accent)",
-              borderRadius: "100px",
-              padding: "6px 16px",
-              marginBottom: "24px",
-              fontFamily: "JetBrains Mono",
-              fontSize: "12px",
-              color: "var(--accent)",
-            }}
-          >
-            ✦ Powered by Llama 3.3 70B
+      {/* ════ HERO ════ */}
+      <section className="hp-hero">
+        <div className="hp-hero-copy">
+          <div className="hp-pill">
+            <span className="hp-pill-dot" />
+            AI-powered · Real development workflow
           </div>
 
-          <h1
-            style={{
-              fontFamily: "Space Grotesk",
-              fontSize: "clamp(36px, 4vw, 56px)",
-              fontWeight: "700",
-              lineHeight: "1.1",
-              marginBottom: "20px",
-              letterSpacing: "-2px",
-            }}
-          >
-            Your personal
-            <br />
-            <span style={{ color: "var(--accent)" }}>senior engineer</span>
-            <br />
-            on demand.
-          </h1>
+          <h1>Ship better code.<br /><em>Understand why.</em></h1>
 
-          <p
-            style={{
-              color: "var(--text-secondary)",
-              fontSize: "16px",
-              lineHeight: "1.7",
-              marginBottom: "36px",
-              fontFamily: "Inter",
-            }}
-          >
-            Paste any code and get instant feedback on bugs, complexity,
-            security, and style — the kind of review it takes weeks to get from
-            a real team.
+          <p className="hp-lede">
+            Review a snippet or an entire GitHub repository. Get severity-ranked issues,
+            quality scores, Big O analysis, and answers you can keep exploring.
           </p>
 
-          <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-            <button
-              onClick={user ? () => router.push("/dashboard") : handleLogin}
-              style={{
-                background: "var(--accent)",
-                color: "#0F0F0F",
-                border: "none",
-                padding: "14px 32px",
-                borderRadius: "10px",
-                fontFamily: "Space Grotesk",
-                fontWeight: "700",
-                fontSize: "15px",
-                cursor: "pointer",
-              }}
-            >
-              {user ? "Go to Dashboard →" : "Start for free →"}
+          <div className="hp-hero-btns">
+            <button className="hp-btn hp-btn-primary" onClick={go}>
+              {user ? "Go to dashboard" : "Start reviewing free"}
+              <Icon name="arrow" size={17} />
             </button>
-            <button
-              onClick={() =>
-                document
-                  .getElementById("demo")
-                  ?.scrollIntoView({ behavior: "smooth" })
-              }
-              style={{
-                background: "transparent",
-                color: "var(--text-primary)",
-                border: "1px solid var(--border)",
-                padding: "14px 32px",
-                borderRadius: "10px",
-                fontFamily: "Space Grotesk",
-                fontWeight: "600",
-                fontSize: "15px",
-                cursor: "pointer",
-              }}
-            >
-              See demo ↓
-            </button>
+            <a className="hp-btn hp-btn-ghost" href="#features">See features</a>
           </div>
 
-          {/* Stats */}
-          <div style={{ display: "flex", gap: "32px", marginTop: "48px" }}>
-            {[
-              { value: "~3s", label: "Avg review time" },
-              { value: "5+", label: "Languages" },
-              { value: "100%", label: "Free to use" },
-            ].map((s) => (
-              <div key={s.label}>
-                <div
-                  style={{
-                    fontFamily: "Space Grotesk",
-                    fontSize: "24px",
-                    fontWeight: "700",
-                    color: "var(--accent)",
-                  }}
-                >
-                  {s.value}
-                </div>
-                <div
-                  style={{
-                    fontFamily: "JetBrains Mono",
-                    fontSize: "11px",
-                    color: "var(--text-secondary)",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                  }}
-                >
-                  {s.label}
-                </div>
-              </div>
-            ))}
+          <div className="hp-trust">
+            <span><Icon name="check" size={14} /> GitHub sign-in</span>
+            <span><Icon name="check" size={14} /> No setup needed</span>
+            <span><Icon name="check" size={14} /> PDF export</span>
+            <span><Icon name="check" size={14} /> Free to use</span>
           </div>
         </div>
 
-        {/* Right — Live Demo */}
-        <div
-          id="demo"
-          style={{
-            background: "var(--bg-secondary)",
-            border: "1px solid var(--border)",
-            borderRadius: "16px",
-            overflow: "hidden",
-            boxShadow: "0 0 60px rgba(232, 160, 32, 0.05)",
-          }}
-        >
-          {/* Editor header */}
-          <div
-            style={{
-              background: "var(--bg-tertiary)",
-              padding: "10px 16px",
-              borderBottom: "1px solid var(--border)",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-            }}
-          >
-            <div
-              style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                background: "#E05252",
-              }}
-            />
-            <div
-              style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                background: "#E8A020",
-              }}
-            />
-            <div
-              style={{
-                width: "10px",
-                height: "10px",
-                borderRadius: "50%",
-                background: "#52A878",
-              }}
-            />
-            <span
-              style={{
-                fontFamily: "JetBrains Mono",
-                fontSize: "11px",
-                color: "var(--text-secondary)",
-                marginLeft: "8px",
-              }}
-            >
-              find_duplicates.py
+        {/* ── Product window ── */}
+        <div className="hp-window" aria-label="Live product preview">
+          {/* title bar */}
+          <div className="hp-winbar">
+            <div className="hp-dots"><i /><i /><i /></div>
+            <span className="hp-winbar-file">
+              <span className="hp-lang-badge">PY</span>
+              duplicate-finder.py
             </span>
-            {scanning && (
-              <span
-                style={{
-                  marginLeft: "auto",
-                  fontFamily: "JetBrains Mono",
-                  fontSize: "10px",
-                  color: "var(--accent)",
-                  animation: "pulse 1s infinite",
-                }}
-              >
-                ● analyzing...
-              </span>
-            )}
+            <span className={`hp-scan-badge ${scanDone ? "done" : ""}`}>
+              <i />
+              {scanDone ? "Review complete" : "Analyzing…"}
+            </span>
           </div>
 
-          {/* Code */}
-          <pre
-            style={{
-              fontFamily: "JetBrains Mono",
-              fontSize: "12px",
-              lineHeight: "1.7",
-              padding: "16px",
-              color: "var(--text-primary)",
-              margin: 0,
-              minHeight: "180px",
-              borderBottom: "1px solid var(--border)",
-            }}
-          >
-            {typedCode}
-            <span
-              style={{ color: "var(--accent)", animation: "blink 1s infinite" }}
-            >
-              |
-            </span>
-          </pre>
-
-          {/* Score */}
-          {score && (
-            <div
-              style={{
-                padding: "12px 16px",
-                borderBottom: "1px solid var(--border)",
-                display: "flex",
-                alignItems: "center",
-                gap: "12px",
-                animation: "fadeIn 0.4s ease",
-              }}
-            >
-              <span
-                style={{
-                  fontFamily: "JetBrains Mono",
-                  fontSize: "11px",
-                  color: "var(--text-secondary)",
-                }}
-              >
-                Overall Score
-              </span>
-              <span
-                style={{
-                  fontFamily: "Space Grotesk",
-                  fontSize: "20px",
-                  fontWeight: "700",
-                  color: "var(--accent)",
-                }}
-              >
-                {score}/100
-              </span>
-              <div
-                style={{
-                  flex: 1,
-                  height: "4px",
-                  background: "var(--bg-tertiary)",
-                  borderRadius: "2px",
-                }}
-              >
-                <div
-                  style={{
-                    height: "100%",
-                    width: `${score}%`,
-                    background: "var(--accent)",
-                    borderRadius: "2px",
-                    transition: "width 1s ease",
-                  }}
-                />
-              </div>
+          {/* body: code + results side by side */}
+          <div className="hp-win-body">
+            {/* code pane */}
+            <div className="hp-code-pane">
+              <div className="hp-scan-line" aria-hidden="true" />
+              <pre>
+                <code>
+                  {codeLines.map((line) => (
+                    <div
+                      key={line.n}
+                      className={`hp-line ${scanDone && (line.n === 3 || line.n === 4) ? "hp-line-warn" : ""} ${scanDone && line.n === 5 ? "hp-line-crit" : ""}`}
+                    >
+                      <span className="hp-ln">{line.n}</span>
+                      {line.tokens.map((tok, i) => (
+                        <span key={i} className={`hp-tok-${tok.t}`}>{tok.v}</span>
+                      ))}
+                    </div>
+                  ))}
+                </code>
+              </pre>
             </div>
-          )}
 
-          {/* Issues */}
-          <div style={{ padding: "12px 16px" }}>
-            {showIssues &&
-              DEMO_ISSUES.slice(0, visibleIssues).map((issue, i) => (
-                <div
-                  key={i}
-                  style={{
-                    borderLeft: `3px solid ${SEVERITY_COLORS[issue.severity]}`,
-                    paddingLeft: "10px",
-                    marginBottom: "10px",
-                    animation: "fadeIn 0.3s ease",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontFamily: "JetBrains Mono",
-                      fontSize: "10px",
-                      color: SEVERITY_COLORS[issue.severity],
-                      textTransform: "uppercase",
-                      marginBottom: "2px",
-                    }}
-                  >
-                    {issue.severity}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "Space Grotesk",
-                      fontSize: "13px",
-                      fontWeight: "600",
-                      marginBottom: "2px",
-                    }}
-                  >
-                    {issue.title}
-                  </div>
-                  <div
-                    style={{
-                      fontFamily: "Inter",
-                      fontSize: "11px",
-                      color: "var(--text-secondary)",
-                    }}
-                  >
-                    {issue.desc}
-                  </div>
+            {/* results pane */}
+            <div className="hp-results-pane">
+              {/* score */}
+              <div className="hp-score-block">
+                <div className="hp-score-labels">
+                  <span>Code health</span>
+                  <strong className={scoreVisible ? "hp-score-visible" : ""}>62<small>/100</small></strong>
                 </div>
-              ))}
+                <div className="hp-ring" aria-label="Score: 62 out of 100">
+                  <svg viewBox="0 0 44 44" className="hp-ring-svg">
+                    <circle cx="22" cy="22" r="18" className="hp-ring-track" />
+                    <circle cx="22" cy="22" r="18" className={`hp-ring-fill ${scoreVisible ? "hp-ring-animated" : ""}`} />
+                  </svg>
+                  <span className="hp-ring-num">62</span>
+                </div>
+              </div>
+
+              {/* score bars */}
+              <div className="hp-bars">
+                {scoreDimensions.map((d) => (
+                  <div key={d.label} className="hp-bar-row">
+                    <div className="hp-bar-meta">
+                      <span>{d.label}</span><span>{d.pct}</span>
+                    </div>
+                    <div className="hp-bar-track">
+                      <div
+                        className={`hp-bar-fill ${scoreVisible ? "hp-bar-animated" : ""}`}
+                        style={{ "--bar-w": `${d.pct}%` } as React.CSSProperties}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* divider */}
+              <div className="hp-div" />
+
+              {/* findings */}
+              <div className="hp-findings-head">
+                <span>3 findings</span>
+                <small>Sorted by severity</small>
+              </div>
+              <div className="hp-findings">
+                {findings.map((f) => (
+                  <div
+                    key={f.title}
+                    className={`hp-finding hp-finding-${f.tone} ${scanDone ? "hp-finding-visible" : ""}`}
+                    style={{ transitionDelay: f.delay }}
+                  >
+                    <div className="hp-finding-top">
+                      <span>{f.label}</span>
+                      <small>{f.line}</small>
+                    </div>
+                    <strong>{f.title}</strong>
+                  </div>
+                ))}
+              </div>
+
+              <button className="hp-open-report" onClick={go}>
+                View full report <Icon name="arrow" size={13} />
+              </button>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* Features */}
-      <section
-        id="features"
-        style={{
-          borderTop: "1px solid var(--border)",
-          padding: "80px 48px",
-          maxWidth: "1200px",
-          margin: "0 auto",
-        }}
-      >
-        <div style={{ textAlign: "center", marginBottom: "48px" }}>
-          <p
-            style={{
-              fontFamily: "JetBrains Mono",
-              fontSize: "12px",
-              color: "var(--accent)",
-              textTransform: "uppercase",
-              letterSpacing: "1px",
-              marginBottom: "12px",
-            }}
-          >
-            What you get
-          </p>
-          <h2
-            style={{
-              fontFamily: "Space Grotesk",
-              fontSize: "36px",
-              fontWeight: "700",
-              letterSpacing: "-1px",
-            }}
-          >
-            Everything a senior engineer would catch
-          </h2>
+      {/* ════ STATS STRIP ════ */}
+      <div className="hp-stats" aria-label="Product highlights">
+        {[
+          { icon: "code"    as IconName, num: "7+",  label: "Languages"        },
+          { icon: "zap"     as IconName, num: "4",   label: "Quality dimensions" },
+          { icon: "shield"  as IconName, num: "3",   label: "Severity levels"  },
+          { icon: "star"    as IconName, num: "100", label: "Point score scale" },
+          { icon: "lock"    as IconName, num: "JWT", label: "Auth + Redis cache"},
+        ].map((s) => (
+          <div key={s.label} className="hp-stat">
+            <span className="hp-stat-icon"><Icon name={s.icon} size={16} /></span>
+            <strong>{s.num}</strong>
+            <span>{s.label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* ════ FEATURES ════ */}
+      <section className="hp-features" id="features">
+        <div className="hp-section-intro">
+          <div>
+            <p className="hp-eyebrow"><span /> Everything in one review loop</p>
+            <h2>From first scan to<br />the deeper question.</h2>
+          </div>
+          <p>CodeReviewAI does more than flag a line. It gives you the context to understand the problem, act on it, and measure what changed.</p>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            gap: "20px",
-          }}
-        >
-          {[
-            {
-              icon: "⚠",
-              label: "Critical",
-              title: "Bug Detection",
-              desc: "Catches logic errors, null references, out-of-bounds access and security vulnerabilities before they hit production.",
-            },
-            {
-              icon: "◎",
-              label: "Analysis",
-              title: "Complexity Analysis",
-              desc: "Automatically computes Time and Space complexity in Big O notation for every function you submit.",
-            },
-            {
-              icon: "↗",
-              label: "Refactor",
-              title: "Refactoring Suggestions",
-              desc: "See before/after code examples with clear explanations of why the new version is better.",
-            },
-            {
-              icon: "◈",
-              label: "Score",
-              title: "Quality Score",
-              desc: "Get scored on Readability, Performance, Security and Maintainability — all in one dashboard.",
-            },
-            {
-              icon: "◷",
-              label: "History",
-              title: "Progress Tracking",
-              desc: "Track how your code quality improves over time across all your past reviews.",
-            },
-            {
-              icon: "⬡",
-              label: "Export",
-              title: "PDF Reports",
-              desc: "Download a complete formatted report with all issues, scores, and suggestions.",
-            },
-          ].map((f) => (
-            <div
+        <div className="hp-feature-grid">
+          {features.map((f, i) => (
+            <article
               key={f.title}
-              style={{
-                background: "var(--bg-secondary)",
-                border: "1px solid var(--border)",
-                borderRadius: "12px",
-                padding: "28px",
-                transition: "border-color 0.2s, transform 0.2s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = "var(--accent)";
-                e.currentTarget.style.transform = "translateY(-2px)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = "var(--border)";
-                e.currentTarget.style.transform = "translateY(0)";
-              }}
+              className="hp-feature-card"
+              style={{ "--card-accent": f.accent } as React.CSSProperties}
             >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "10px",
-                  marginBottom: "16px",
-                }}
-              >
-                <span style={{ color: "var(--accent)", fontSize: "20px" }}>
-                  {f.icon}
-                </span>
-                <span
-                  style={{
-                    fontFamily: "JetBrains Mono",
-                    fontSize: "11px",
-                    color: "var(--text-secondary)",
-                    textTransform: "uppercase",
-                    letterSpacing: "1px",
-                  }}
-                >
-                  {f.label}
-                </span>
+              <div className="hp-feat-number">0{i + 1}</div>
+              <div className="hp-feat-icon" style={{ borderColor: `${f.accent}30`, background: `${f.accent}10`, color: f.accent }}>
+                <Icon name={f.icon} size={20} />
               </div>
-              <h3
-                style={{
-                  fontFamily: "Space Grotesk",
-                  fontSize: "18px",
-                  fontWeight: "600",
-                  marginBottom: "10px",
-                }}
-              >
-                {f.title}
-              </h3>
-              <p
-                style={{
-                  color: "var(--text-secondary)",
-                  fontSize: "14px",
-                  lineHeight: "1.6",
-                }}
-              >
-                {f.desc}
-              </p>
-            </div>
+              <p className="hp-feat-eyebrow" style={{ color: f.accent }}>{f.eyebrow}</p>
+              <h3>{f.title}</h3>
+              <span>{f.text}</span>
+              <footer>
+                <span className="hp-feat-check" style={{ color: f.accent }}>
+                  <Icon name="check" size={13} />
+                </span>
+                {f.meta}
+              </footer>
+            </article>
           ))}
         </div>
       </section>
 
-      {/* How it works */}
-      <section
-        id="how-it-works"
-        style={{
-          borderTop: "1px solid var(--border)",
-          padding: "80px 48px",
-          maxWidth: "1200px",
-          margin: "0 auto",
-        }}
-      >
-        <div style={{ textAlign: "center", marginBottom: "48px" }}>
-          <p
-            style={{
-              fontFamily: "JetBrains Mono",
-              fontSize: "12px",
-              color: "var(--accent)",
-              textTransform: "uppercase",
-              letterSpacing: "1px",
-              marginBottom: "12px",
-            }}
-          >
-            How it works
-          </p>
-          <h2
-            style={{
-              fontFamily: "Space Grotesk",
-              fontSize: "36px",
-              fontWeight: "700",
-              letterSpacing: "-1px",
-            }}
-          >
-            Three steps to better code
-          </h2>
+      {/* ════ HOW IT WORKS ════ */}
+      <section className="hp-workflow" id="workflow">
+        <div className="hp-workflow-copy">
+          <p className="hp-eyebrow"><span /> How it works</p>
+          <h2>A focused review,<br />without the ceremony.</h2>
+          <p>Three steps from raw code to an actionable report. Your results stay organized for the next time you need them.</p>
+          <button className="hp-text-link" onClick={go}>
+            Run your first review <Icon name="arrow" size={15} />
+          </button>
         </div>
 
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "32px",
-          }}
-        >
+        <div className="hp-steps">
           {[
-            {
-              step: "01",
-              title: "Login with GitHub",
-              desc: "One click authentication. No passwords, no forms. Your GitHub account is all you need.",
-            },
-            {
-              step: "02",
-              title: "Paste your code",
-              desc: "Use the built-in VS Code editor. Select your language and give your file a name.",
-            },
-            {
-              step: "03",
-              title: "Get your review",
-              desc: "AI analyzes your code in seconds. View issues, scores, refactoring suggestions, and export a PDF.",
-            },
-          ].map((s) => (
-            <div
-              key={s.step}
-              style={{ textAlign: "center", padding: "32px 24px" }}
-            >
-              <div
-                style={{
-                  fontFamily: "Space Grotesk",
-                  fontSize: "48px",
-                  fontWeight: "700",
-                  color: "var(--accent)",
-                  opacity: 0.3,
-                  marginBottom: "16px",
-                  letterSpacing: "-2px",
-                }}
-              >
-                {s.step}
+            { n: "01", icon: "code"   as IconName, title: "Bring the code",      body: "Paste a snippet or submit a public GitHub repository URL. Supports 7+ languages with auto-detection." },
+            { n: "02", icon: "shield" as IconName, title: "Let AI inspect it",    body: "The engine evaluates issues, Big O complexity, security risks, readability, performance, and maintainability." },
+            { n: "03", icon: "chart"  as IconName, title: "Act with context",     body: "Explore refactors, ask follow-up questions in the contextual chat, revisit history, or export the full PDF report." },
+          ].map((step) => (
+            <article key={step.n}>
+              <div className="hp-step-num">{step.n}</div>
+              <div className="hp-step-body">
+                <h3>{step.title}</h3>
+                <p>{step.body}</p>
               </div>
-              <h3
-                style={{
-                  fontFamily: "Space Grotesk",
-                  fontSize: "20px",
-                  fontWeight: "600",
-                  marginBottom: "12px",
-                }}
-              >
-                {s.title}
-              </h3>
-              <p
-                style={{
-                  color: "var(--text-secondary)",
-                  fontSize: "14px",
-                  lineHeight: "1.7",
-                  fontFamily: "Inter",
-                }}
-              >
-                {s.desc}
-              </p>
+              <div className="hp-step-icon"><Icon name={step.icon} size={22} /></div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      {/* ════ TECH STACK ════ */}
+      <section className="hp-stack" id="stack">
+        <div className="hp-stack-copy">
+          <p className="hp-eyebrow"><span /> Built with</p>
+          <h2>A production-grade stack,<br />not tutorial code.</h2>
+          <p>
+            Every layer was chosen deliberately — async job processing with polling,
+            Redis caching to skip repeat LLM calls, ownership-scoped queries,
+            and per-user rate limiting throughout.
+          </p>
+          <a
+            className="hp-btn hp-btn-ghost"
+            href="https://github.com/maheswari8074/CodeReviewAI"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <Icon name="github" size={16} /> View source on GitHub
+          </a>
+        </div>
+
+        <div className="hp-stack-grid">
+          {techStack.map((name) => (
+            <div key={name} className="hp-stack-badge">{name}</div>
+          ))}
+
+          <div className="hp-stack-highlight">
+            <Icon name="zap" size={18} />
+            <div>
+              <strong>Async processing</strong>
+              <span>Submit → immediate ID → poll for results. No blocking, no timeouts.</span>
+            </div>
+          </div>
+
+          <div className="hp-stack-highlight">
+            <Icon name="lock" size={18} />
+            <div>
+              <strong>Secure by design</strong>
+              <span>JWT auth, ownership-scoped DB queries, rate limiting, Redis caching.</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ════ CTA ════ */}
+      <section className="hp-cta">
+        <div className="hp-cta-glow" aria-hidden="true" />
+        <div className="hp-cta-copy">
+          <p className="hp-eyebrow"><span /> Your next review is ready</p>
+          <h2>Good code starts with<br />a better second look.</h2>
+          <p>Connect GitHub and turn your next review into a clear plan of action. Free, no setup required.</p>
+          <button className="hp-btn hp-btn-primary hp-btn-lg" onClick={go}>
+            {user ? "Open dashboard" : "Continue with GitHub"}
+            <Icon name="arrow" size={18} />
+          </button>
+        </div>
+        <div className="hp-cta-checks">
+          {["GitHub OAuth login", "Code + repository review", "Context-aware AI chat", "PDF export", "Review history", "Score analytics"].map((item) => (
+            <div key={item} className="hp-cta-check">
+              <Icon name="check" size={14} /> {item}
             </div>
           ))}
         </div>
       </section>
 
-      {/* CTA */}
-      <section
-        style={{
-          borderTop: "1px solid var(--border)",
-          padding: "80px 48px",
-          textAlign: "center",
-        }}
-      >
-        <h2
-          style={{
-            fontFamily: "Space Grotesk",
-            fontSize: "40px",
-            fontWeight: "700",
-            letterSpacing: "-1px",
-            marginBottom: "16px",
-          }}
-        >
-          Ready to write better code?
-        </h2>
-        <p
-          style={{
-            color: "var(--text-secondary)",
-            fontSize: "16px",
-            marginBottom: "32px",
-            fontFamily: "Inter",
-          }}
-        >
-          Free to use. No credit card required.
+      {/* ════ FOOTER ════ */}
+      <footer className="hp-footer">
+        <div className="hp-footer-brand">
+          <span className="hp-brand-mark sm"><Icon name="code" size={16} /></span>
+          <span>CodeReview<em>AI</em></span>
+        </div>
+
+        <p className="hp-footer-desc">
+          AI-powered code review — issues, scores, refactors, and answers in one place.
         </p>
-        <button
-          onClick={handleLogin}
-          style={{
-            background: "var(--accent)",
-            color: "#0F0F0F",
-            border: "none",
-            padding: "16px 48px",
-            borderRadius: "10px",
-            fontFamily: "Space Grotesk",
-            fontWeight: "700",
-            fontSize: "16px",
-            cursor: "pointer",
-          }}
-        >
-          Get started with GitHub →
-        </button>
-      </section>
 
-      {/* Footer */}
-      <footer
-        style={{
-          borderTop: "1px solid var(--border)",
-          padding: "24px 48px",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          color: "var(--text-secondary)",
-          fontFamily: "JetBrains Mono",
-          fontSize: "12px",
-        }}
-      >
-        <span>CodeReviewAI © 2026</span>
-        <span>
-          Built by{" "}
-          <a
-            href="https://github.com/maheswari8074"
-            style={{ color: "var(--accent)", textDecoration: "none" }}
-          >
-            maheswari8074
+        <div className="hp-footer-links">
+          <a href="#features">Features</a>
+          <a href="#workflow">How it works</a>
+          <a href="#stack">Tech stack</a>
+          <a href="https://github.com/maheswari8074/CodeReviewAI" target="_blank" rel="noopener noreferrer">
+            <Icon name="github" size={14} /> GitHub
           </a>
-        </span>
-      </footer>
+        </div>
 
-      <style>{`
-        @keyframes blink {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0; }
-        }
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.4; }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+        <div className="hp-footer-stack">
+          {techStack.slice(0, 5).map((t) => <span key={t}>{t}</span>)}
+        </div>
+
+        <span className="hp-footer-copy">© {new Date().getFullYear()} CodeReviewAI · Built for better code</span>
+      </footer>
     </main>
   );
 }

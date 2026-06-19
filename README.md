@@ -1,200 +1,300 @@
-<div align="center">
-  <h1>CodeReviewAI</h1>
-  <p>AI-powered code review platform for developers</p>
+# CodeReviewAI
 
-  ![Next.js](https://img.shields.io/badge/Next.js-14-black?style=flat-square)
-  ![Node.js](https://img.shields.io/badge/Node.js-Express-green?style=flat-square)
-  ![MongoDB](https://img.shields.io/badge/Database-MongoDB-brightgreen?style=flat-square)
-  ![Groq](https://img.shields.io/badge/AI-Groq%20Llama%203.3-orange?style=flat-square)
-  ![Redis](https://img.shields.io/badge/Cache-Redis-red?style=flat-square)
+AI-powered code review tool for developers. Paste a snippet or submit a public GitHub repository URL and get severity-ranked issues, quality scores, Big O complexity analysis, concrete refactors, and a context-aware AI assistant — all in one workspace.
 
-  <br />
+![Next.js](https://img.shields.io/badge/Next.js-16-black?style=flat-square)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square)
+![Node.js](https://img.shields.io/badge/Node.js-Express-green?style=flat-square)
+![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-brightgreen?style=flat-square)
+![Redis](https://img.shields.io/badge/Redis-Upstash-red?style=flat-square)
+![License](https://img.shields.io/badge/license-ISC-lightgrey?style=flat-square)
 
-  🔗 **[Live Demo](https://codereviewai.vercel.app)** — coming soon
-</div>
+> **GitHub:** https://github.com/maheswari8074/CodeReviewAI
 
 ---
 
-## Overview
-
-CodeReviewAI is a full-stack web application that gives developers instant, detailed feedback on their code using large language models. Submit any code snippet and get back bug reports, complexity analysis, quality scores, and refactoring suggestions — all in seconds.
-
 ## Features
 
-- **Bug & Issue Detection** — Identifies logic errors, security vulnerabilities, and code smells with severity levels (critical / warning / suggestion)
-- **Complexity Analysis** — Computes Time and Space complexity in Big O notation
-- **Quality Scoring** — Rates code across Readability, Performance, Security, and Maintainability
-- **Refactoring Suggestions** — Side-by-side before/after code with explanations
-- **Review History** — Tracks all past reviews with scores over time
-- **PDF Reports** — Export any review as a formatted PDF document
-- **Multi-language Support** — Python, JavaScript, TypeScript, Java, C++, Go, Rust
+### Code snippet review
+Paste any code into the Monaco editor. Choose a language or let the system auto-detect from 7 supported languages. The review returns:
+- Overall quality score (0–100) with four sub-dimensions: readability, performance, security, maintainability
+- Time and space complexity (Big O notation)
+- Severity-ranked issues: critical, warning, suggestion — each with a description and suggested fix
+- Before/after refactoring examples with explanations
+- Plain-English summary
 
-## Tech Stack
+### Repository review
+Submit a public GitHub URL. The system fetches the repository tree, selects up to 8 representative source files under 30 KB (skipping `node_modules`, `dist`, `.next`, and generated folders), reviews each file independently, and aggregates the results into a single report with per-file scores and a combined issue list.
 
-| Layer | Technology | Reason |
-|---|---|---|
-| Frontend | Next.js 14 | App Router, SSR, Vercel deployment |
-| Backend | Node.js + Express | REST API, middleware support |
-| Database | MongoDB | Flexible schema for review results |
-| AI | Groq (Llama 3.3 70B) | Fast inference, free tier |
-| Cache | Redis (Upstash) | Serverless, REST-based |
-| Auth | GitHub OAuth 2.0 + JWT | Frictionless for developers |
+### Context-aware AI chat
+Every code review and repository report has a floating AI assistant pre-loaded with the review context. Ask follow-up questions about specific issues, request alternative fixes, or explore design decisions. A standalone general-purpose assistant is also available for coding questions unrelated to any review.
+
+### Dashboard analytics
+After completing reviews, the dashboard shows:
+- Combined code review + repository review score trend (line chart)
+- Issues by severity across all reviews (pie chart)
+- Quality breakdown by dimension: readability, performance, security, maintainability (bar chart)
+- Reviews by language (bar chart)
+- Repository scores per repo (bar chart)
+- Summary stats: total code reviews, total repo reviews, average score, total issues found
+
+### Review history
+Full searchable, filterable history for both code reviews and repository reviews in a tabbed view. Supports:
+- Search by filename or language (code) / repository name (repo)
+- Filter code reviews by status: completed, processing, failed
+- Rerun any previous code review with one click (restores original code and settings)
+- Delete reviews (ownership-scoped — users can only delete their own)
+- Pagination on both tabs
+
+### PDF export
+Export a complete review report as a PDF from both the code review detail page and the repository review detail page. Includes scores, issue list, complexity notes, and refactoring suggestions.
+
+### Onboarding
+First-time users see a 3-step guided modal after login that walks through the three main workflows: code review, repository review, and AI chat. Dismissed to localStorage — shown only once.
+
+---
+
+## Tech stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 16 (App Router), React 19, TypeScript 5 |
+| Styling | CSS Modules, Tailwind CSS, Space Grotesk + JetBrains Mono |
+| Code editor | Monaco Editor (`@monaco-editor/react`) |
+| Charts | Recharts |
+| PDF export | jsPDF |
+| Backend | Node.js, Express 5 |
+| Database | MongoDB + Mongoose |
+| Cache | Upstash Redis (1-hour TTL, base64-hashed key per code+language) |
+| AI | Groq SDK — `llama-3.3-70b-versatile` |
+| Auth | GitHub OAuth → JWT (Bearer token) |
+| Job processing | In-memory queue (2 concurrent workers), immediate response + polling |
+| Rate limiting | Per-user in-memory windowed limiter |
+| Testing | Jest + Supertest |
+
+---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    Client Browser                    │
-└─────────────────────┬───────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────┐
-│              Next.js Frontend (Vercel)               │
-│                                                      │
-│   Landing → Dashboard → Review → History → Detail   │
-└─────────────────────┬───────────────────────────────┘
-                      │ REST API
-                      ▼
-┌─────────────────────────────────────────────────────┐
-│             Express Backend (Railway)                │
-│                                                      │
-│  ┌─────────────┐  ┌──────────────┐  ┌───────────┐  │
-│  │ Rate Limiter│  │  Auth (JWT)  │  │  Routes   │  │
-│  └─────────────┘  └──────────────┘  └───────────┘  │
-│                                                      │
-│  ┌──────────────────────────────────────────────┐   │
-│  │              Job Queue (2 workers)           │   │
-│  └──────────────────────┬───────────────────────┘   │
-└─────────────────────────┼───────────────────────────┘
-                          │
-          ┌───────────────┼───────────────┐
-          ▼               ▼               ▼
-┌──────────────┐  ┌──────────────┐  ┌──────────────┐
-│   MongoDB    │  │    Redis     │  │   Groq API   │
-│   (Atlas)    │  │  (Upstash)   │  │  Llama 3.3   │
-│              │  │              │  │              │
-│ Users        │  │ Review cache │  │ Code analysis│
-│ Reviews      │  │ TTL: 1 hour  │  │ JSON output  │
-└──────────────┘  └──────────────┘  └──────────────┘
+Browser
+  └── Next.js App Router (frontend/)
+        ├── /dashboard        — overview + analytics
+        ├── /review           — Monaco editor + polling + results
+        ├── /review/[id]      — saved report + PDF export + chat
+        ├── /repo-review      — URL input + progress + polling
+        ├── /repo-review/[id] — per-file sidebar + PDF export + chat
+        ├── /history          — tabbed code/repo history
+        ├── /chat             — standalone AI assistant
+        └── /auth/callback    — JWT token exchange
+
+Express API (backend/)
+  ├── POST   /api/auth/github/callback  — OAuth exchange, JWT issue
+  ├── GET    /api/auth/me               — current user
+  ├── POST   /api/reviews               — submit code review (async)
+  ├── GET    /api/reviews               — paginated list + search + stats
+  ├── GET    /api/reviews/:id           — full review
+  ├── GET    /api/reviews/:id/status    — polling endpoint
+  ├── DELETE /api/reviews/:id           — ownership-scoped delete
+  ├── POST   /api/repo-reviews          — submit repo review (async)
+  ├── GET    /api/repo-reviews          — paginated list
+  ├── GET    /api/repo-reviews/:id      — full report
+  ├── GET    /api/repo-reviews/:id/status
+  ├── DELETE /api/repo-reviews/:id      — ownership-scoped delete
+  ├── POST   /api/chat                  — send message (context-aware)
+  └── GET    /api/chat                  — chat history
+
+Async flow:
+  Client POSTs code/URL
+    → Server creates DB record (status: processing), responds immediately with ID
+    → Background worker calls Groq API
+    → On completion, updates DB record (status: completed)
+    → Client polls /status every 3s until completed or failed
 ```
 
-## How It Works
+---
 
-1. User logs in via GitHub OAuth — backend exchanges code for access token, fetches user profile, issues a JWT
-2. User submits code — backend checks Redis cache first; if hit, returns instantly
-3. Cache miss — job is added to the async queue with a 2-worker concurrency limit
-4. Worker calls Groq API with a structured prompt — response is parsed into JSON
-5. Result is saved to MongoDB, cached in Redis, and returned to the frontend
-6. User sees scores, issues, refactoring suggestions, and can export a PDF report
+## Project structure
 
-## Key Design Decisions
+```
+CodeReviewAI/
+├── backend/
+│   ├── config/
+│   │   └── db.js                  — MongoDB connection
+│   ├── controllers/
+│   │   ├── authController.js      — GitHub OAuth + JWT
+│   │   ├── reviewController.js    — code review CRUD
+│   │   ├── repoController.js      — repository review CRUD
+│   │   └── chatController.js      — context-aware chat
+│   ├── middleware/
+│   │   ├── auth.js                — JWT Bearer verification
+│   │   └── rateLimiter.js         — per-user windowed rate limiter
+│   ├── models/
+│   │   ├── User.js                — GitHub profile
+│   │   ├── Review.js              — code review + result
+│   │   ├── RepoReview.js          — repo review + per-file results
+│   │   └── Chat.js                — chat message history
+│   ├── queues/
+│   │   └── reviewQueue.js         — in-memory job queue (2 workers)
+│   ├── routes/
+│   │   ├── auth.js
+│   │   ├── review.js
+│   │   ├── repo.js
+│   │   └── chat.js
+│   ├── services/
+│   │   ├── groqService.js         — Groq LLM: review + chat
+│   │   ├── githubService.js       — repo tree fetch + file filtering
+│   │   └── cacheService.js        — Upstash Redis read/write
+│   ├── tests/
+│   │   ├── setup.js               — Jest env setup
+│   │   ├── auth.test.js           — JWT middleware (5 tests)
+│   │   ├── reviewController.test.js — submit/delete/list (12 tests)
+│   │   ├── repoController.test.js — submit/delete/get (8 tests)
+│   │   └── rateLimiter.test.js    — per-user limits (3 tests)
+│   └── index.js                   — Express app entry
+│
+└── frontend/
+    └── app/
+        ├── components/
+        │   ├── AppShell.tsx        — authenticated sidebar layout
+        │   ├── AppIcon.tsx         — SVG icon set
+        │   ├── ChatPanel.tsx       — floating + embedded chat
+        │   ├── DashboardCharts.tsx — Recharts analytics
+        │   ├── OnboardingModal.tsx — first-login guided tour
+        │   ├── Pagination.tsx      — ellipsis pagination
+        │   ├── ReviewReport.tsx    — shared score + issues + refactors
+        │   └── UI.tsx              — PageHeader, StateCard, LoadingCard
+        ├── hooks/
+        │   ├── useAuth.ts          — user session + logout
+        │   └── useJobPolling.ts    — generic async job poller
+        ├── lib/
+        │   └── api.ts              — typed apiFetch + ApiError
+        └── types.ts                — shared TypeScript interfaces
+```
 
-**Why a Job Queue?**
-If 100 users submit code simultaneously, direct API calls would overwhelm the system. The queue processes jobs with a configurable worker limit, ensuring stability under load.
+---
 
-**Why Redis Caching?**
-Identical code submissions return cached results instantly without hitting the AI API. Cache TTL is 1 hour, reducing latency and API costs significantly.
-
-**Why Rate Limiting?**
-Each user is limited to 10 requests per minute to prevent abuse and ensure fair usage across all users.
-
-**Why GitHub OAuth?**
-Code review is a developer tool — GitHub OAuth gives frictionless login for the exact target audience with no password management needed.
-
-## Local Development
+## Getting started
 
 ### Prerequisites
 
 - Node.js 18+
 - MongoDB (local or Atlas)
-- [Groq API key](https://console.groq.com) — free
-- [GitHub OAuth App](https://github.com/settings/developers)
-- [Upstash Redis](https://upstash.com) — free
+- A [GitHub OAuth App](https://github.com/settings/developers) — set callback URL to `http://localhost:5000/api/auth/github/callback`
+- A [Groq API key](https://console.groq.com)
+- An [Upstash Redis](https://upstash.com) database (free tier works)
 
-### Setup
+### Backend setup
 
 ```bash
-# Clone the repo
-git clone https://github.com/maheswari8074/CodeReviewAI.git
-cd CodeReviewAI
-
-# Backend
 cd backend
 npm install
-cp .env.example .env
-# Fill in your environment variables
-npm run dev
-
-# Frontend (new terminal)
-cd frontend
-npm install
-cp .env.example .env.local
-# Fill in your environment variables
-npm run dev
 ```
 
-### Environment Variables
+Create `backend/.env`:
 
-**`backend/.env`**
 ```env
 PORT=5000
-MONGODB_URI=
-JWT_SECRET=
-GITHUB_CLIENT_ID=
-GITHUB_CLIENT_SECRET=
-GROQ_API_KEY=
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
+MONGODB_URI=your_mongodb_connection_string
 FRONTEND_URL=http://localhost:3000
+JWT_SECRET=a_long_random_secret_string
+GITHUB_CLIENT_ID=your_github_oauth_client_id
+GITHUB_CLIENT_SECRET=your_github_oauth_client_secret
+GROQ_API_KEY=your_groq_api_key
+UPSTASH_REDIS_REST_URL=your_upstash_redis_url
+UPSTASH_REDIS_REST_TOKEN=your_upstash_redis_token
 ```
 
-**`frontend/.env.local`**
+```bash
+npm run dev       # development with nodemon
+npm start         # production
+npm test          # run 28 unit tests
+```
+
+### Frontend setup
+
+```bash
+cd frontend
+npm install
+```
+
+Create `frontend/.env.local`:
+
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:5000
 ```
 
-## API Reference
-
-```
-GET    /api/auth/github              → Redirect to GitHub OAuth
-GET    /api/auth/github/callback     → OAuth callback, issues JWT
-GET    /api/auth/me                  → Get authenticated user
-
-POST   /api/reviews                  → Submit code for review
-GET    /api/reviews                  → List all reviews for user
-GET    /api/reviews/:id              → Get single review detail
-GET    /api/reviews/queue/stats      → Get queue status
+```bash
+npm run dev       # development server on http://localhost:3000
+npm run build     # production build
+npm run lint      # ESLint
 ```
 
-## Project Structure
+---
 
+## Environment variables reference
+
+| Variable | Where | Description |
+|---|---|---|
+| `PORT` | backend | Express server port (default 5000) |
+| `MONGODB_URI` | backend | MongoDB connection string |
+| `FRONTEND_URL` | backend | CORS allowed origin |
+| `JWT_SECRET` | backend | Secret for signing/verifying JWTs |
+| `GITHUB_CLIENT_ID` | backend | GitHub OAuth app client ID |
+| `GITHUB_CLIENT_SECRET` | backend | GitHub OAuth app client secret |
+| `GROQ_API_KEY` | backend | Groq API key for LLM calls |
+| `UPSTASH_REDIS_REST_URL` | backend | Upstash Redis REST endpoint |
+| `UPSTASH_REDIS_REST_TOKEN` | backend | Upstash Redis auth token |
+| `NEXT_PUBLIC_API_URL` | frontend | Backend base URL for API calls |
+
+---
+
+## API rate limits
+
+| Endpoint | Limit |
+|---|---|
+| `POST /api/reviews` | 10 requests / minute per user |
+| `POST /api/repo-reviews` | 5 requests / minute per user |
+| `POST /api/chat` | 20 requests / minute per user |
+
+---
+
+## Running tests
+
+```bash
+cd backend
+npm test
 ```
-CodeReviewAI/
-├── frontend/
-│   └── app/
-│       ├── page.tsx              # Landing page
-│       ├── dashboard/page.tsx    # User dashboard
-│       ├── review/page.tsx       # Code submission
-│       ├── review/[id]/page.tsx  # Review detail
-│       ├── history/page.tsx      # Review history
-│       ├── auth/callback/        # OAuth callback
-│       └── hooks/useAuth.ts      # Auth hook
-│
-└── backend/
-    ├── controllers/              # Route handlers
-    ├── models/                   # MongoDB schemas
-    ├── routes/                   # API routes
-    ├── services/
-    │   ├── claudeService.js      # Groq AI integration
-    │   └── cacheService.js       # Redis caching
-    ├── queues/
-    │   └── reviewQueue.js        # Async job queue
-    ├── middleware/
-    │   ├── auth.js               # JWT verification
-    │   └── rateLimiter.js        # Rate limiting
-    └── index.js
-```
 
-## Author
+**28 tests across 4 suites:**
 
-**Maheswari** — [@maheswari8074](https://github.com/maheswari8074)
+| Suite | Tests | What's covered |
+|---|---|---|
+| `auth.test.js` | 5 | Valid token, missing token, malformed token, wrong secret, expired token |
+| `reviewController.test.js` | 12 | Submit validation, cache hit, queue dispatch, delete ownership, 404, pagination, status filter, SQL injection guard |
+| `repoController.test.js` | 8 | Missing URL, parse failure, immediate response, delete ownership, 404, get review |
+| `rateLimiter.test.js` | 3 | Under limit passes, over limit blocked with 429, per-user isolation |
+
+---
+
+## Security
+
+- All authenticated routes require a valid JWT Bearer token
+- Every database query is scoped to `userId` — users cannot access or modify other users' data
+- Rate limiting is applied per authenticated user on all write endpoints
+- Review results are cached server-side by a hashed key — submitted code is never logged or exposed in list responses (list endpoint strips `code` and `result.refactoring` fields)
+- Submitted code and repository file contents are processed for analysis and stored with the review record. Remove secrets, tokens, and personal data before submitting.
+
+---
+
+## Known limitations
+
+- The job queue is in-memory. If the server restarts while a review is processing, the job is lost and the review stays in `processing` status. A production deployment should swap the queue for BullMQ backed by Redis.
+- Repository review only supports public GitHub repositories. Private repos and other Git hosts are not supported.
+- The in-memory rate limiter resets on server restart. A Redis-backed distributed limiter would be needed for multi-instance deployments.
+
+---
+
+## License
+
+ISC

@@ -1,0 +1,8 @@
+.quickStart { margin-bottom: 54px; }
+.sectionHeading { margin-bottom: 20px; display: flex; justify-content: space-between; align-items: end; gap: 20px; }
+.sectionHeading h2 { margin-top: 6px; font-size: 22px; letter-spacing: -.5px; }.sectionHeading > a { color: var(--text-secondary); font-size: 11px; text-decoration: none; }.sectionHeading > a:hover { color: var(--accent); }
+.actionGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.actionCard { min-height: 245px; padding: 26px; display: flex; flex-direction: column; border: 1px solid var(--border); border-radius: 11px; color: var(--text-primary); background: var(--bg-secondary); text-decoration: none; transition: transform .2s, border-color .2s, background .2s; }
+.actionCard:hover { transform: translateY(-2px); border-color: #594b32; background: #1d1c19; }.icon { width: 43px; height: 43px; margin-bottom: 32px; display: grid; place-items: center; border: 1px solid #4d3e25; border-radius: 8px; color: var(--accent); background: var(--accent-dim); }
+.actionCard h3 { margin-bottom: 9px; font-size: 18px; }.actionCard p { color: var(--text-secondary); font-size: 12px; line-height: 1.65; }.actionCard strong { margin-top: auto; padding-top: 20px; color: var(--accent); font: 600 11px 'Space Grotesk'; }
+@media (max-width: 980px) { .actionGrid { grid-template-columns: 1fr; }.actionCard { min-height: 210px; } }
